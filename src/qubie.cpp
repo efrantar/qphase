@@ -109,29 +109,16 @@ namespace qubie {
     if (parity(c.cperm, corner::COUNT) != parity(c.eperm, edge::COUNT))
       return 9; // corner and edge permutation parity mismatch
 
-    bool faces[face::COUNT];
-    for (int face : c.fperm) {
-      if (face < 0 || face  >= face::COUNT)
-        return 10; // invalid face
-      faces[face] = true;
-    }
-    for (bool face : faces) {
-      if (!face)
-        return 11; // missing face
-    }
-
-    int inv = 0;
-    for (int i = 0; i < 3; i++) {
-      int tmp = c.fperm[i + 3] - c.fperm[i];
-      if (tmp < 0) {
-        inv++;
-        tmp = -tmp;
+    bool ok = false;
+    for (int i = 0; i < coord::N_TILT; i++) {
+      // Note that the default tilt is the first in the permutation list, thus this will break immediately
+      if (std::equal(c.fperm, c.fperm + face::COUNT, face::PERMS[i])) {
+        ok = true;
+        break;
       }
-      if (tmp != 3)
-        return 12; // axes not preserved
     }
-    if (inv & 1)
-      return 13; // impossible number of inverted axes
+    if (!ok)
+      return 10; // invalid face permutation
 
     return 0;
   }

@@ -1,10 +1,11 @@
-#include "cubie.h"
+#include "qubie.h"
 
 #include <algorithm>
 #include <random>
 #include "coord.h"
+#include "face.h"
 
-namespace cubie {
+namespace qubie {
 
   /* Faster than tricky if-else sequences for handling mirrored states */
   int mul_coris[][6] = {
@@ -22,21 +23,28 @@ namespace cubie {
   std::random_device device;
   std::mt19937 gen(device());
 
-  void corner::mul(const cubie::cube& c1, const cubie::cube& c2, cubie::cube& into) {
+  void corner::mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into) {
     for (int i = 0; i < corner::COUNT; i++) {
       into.cperm[i] = c1.cperm[c2.cperm[i]];
       into.cori[i] = mul_coris[c1.cori[c2.cperm[i]]][c2.cori[i]];
     }
   }
 
-  void edge::mul(const cubie::cube& c1, const cubie::cube& c2, cubie::cube& into) {
+  void edge::mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into) {
     for (int i = 0; i < edge::COUNT; i++) {
       into.eperm[i] = c1.eperm[c2.eperm[i]];
       into.eori[i] = (c1.eori[c2.eperm[i]] + c2.eori[i]) & 1;
     }
   }
 
-  // Permutation partiy =  #inversions % 2
+  void mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into) {
+    corner::mul(c1, c2, into);
+    edge::mul(c1, c2, into);
+    for (int i = 0; i < face::COUNT; i++)
+      into.fperm[i] = c1.fperm[c2.fperm[i]];
+  }
+
+  // Permutation parity =  #inversions % 2
   bool parity(const int perm[], int len) {
     int par = 0;
     for (int i = 0; i < len; i++) {
@@ -48,11 +56,6 @@ namespace cubie {
     return par & 1;
   }
 
-  void mul(const cubie::cube& c1, const cubie::cube& c2, cubie::cube& into) {
-    corner::mul(c1, c2, into);
-    edge::mul(c1, c2, into);
-  }
-
   void inv(const cube& c, cube& into) {
     for (int corner = 0; corner < corner::COUNT; corner++)
       into.cperm[c.cperm[corner]] = corner; // inv[a[i]] = i
@@ -62,6 +65,8 @@ namespace cubie {
       into.cori[i] = inv_cori[c.cori[into.cperm[i]]];
     for (int i = 0; i < edge::COUNT; i++)
       into.eori[i] = c.eori[into.eperm[i]];
+    for (int face = 0; face < face::COUNT; face++)
+      into.fperm[c.fperm[face]] = face;
   }
 
   int check(const cube& c) {
@@ -103,14 +108,37 @@ namespace cubie {
 
     if (parity(c.cperm, corner::COUNT) != parity(c.eperm, edge::COUNT))
       return 9; // corner and edge permutation parity mismatch
+
+    bool faces[face::COUNT];
+    for (int face : c.fperm) {
+      if (face < 0 || face  >= face::COUNT)
+        return 10; // invalid face
+      faces[face] = true;
+    }
+    for (bool face : faces) {
+      if (!face)
+        return 11; // missing face
+    }
+
+    int inv = 0;
+    for (int i = 0; i < 3; i++) {
+      int tmp = c.fperm[i + 3] - c.fperm[i];
+      if (tmp < 0) {
+        inv++;
+        tmp = -tmp;
+      }
+      if (tmp != 3)
+        return 12; // axes not preserved
+    }
+    if (inv & 1)
+      return 13; // impossible number of inverted axes
+
     return 0;
   }
 
   void shuffle(cube& c) {
-    for (int i = 0; i < corner::COUNT; i++)
-      c.cperm[i] = i;
-    for (int i = 0; i < edge::COUNT; i++)
-      c.eperm[i] = i;
+    std::iota(c.cperm, c.cperm + corner::COUNT, 0);
+    std::iota(c.eperm, c.eperm + edge::COUNT, 0);
 
     coord::set_corners(c, std::uniform_int_distribution<int>(0, coord::N_CORNERS)(gen));
     std::shuffle(c.eperm, c.eperm + edge::COUNT, gen); // no coordinate for all edges
@@ -119,15 +147,17 @@ namespace cubie {
 
     coord::set_twist(c, std::uniform_int_distribution<int>(0, coord::N_TWIST - 1)(gen));
     coord::set_flip(c, std::uniform_int_distribution<int>(0, coord::N_FLIP - 1)(gen));
+
+    std::iota(c.fperm, c.fperm + face::COUNT, 0);
   }
 
-  // We could maybe make this faster, but it is not performance critical anyways
   bool operator==(const cube& c1, const cube& c2) {
     return
       std::equal(c1.cperm, c1.cperm + corner::COUNT, c2.cperm) &&
       std::equal(c1.eperm, c1.eperm + edge::COUNT, c2.eperm) &&
       std::equal(c1.cori, c1.cori + corner::COUNT, c2.cori) &&
-      std::equal(c1.eori, c1.eori + edge::COUNT, c2.eori)
+      std::equal(c1.eori, c1.eori + edge::COUNT, c2.eori) &&
+      std::equal(c1.fperm, c1.fperm + face::COUNT, c2.fperm)
     ;
   }
 

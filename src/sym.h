@@ -6,37 +6,35 @@
 #define __SYM__
 
 #include "coord.h"
-#include "cubie.h"
+#include "qubie.h"
 #include "move.h"
 
 namespace sym {
 
   const int COUNT = 48;
+  const int ROT = 16; // 120 degree rotation around axis through URF and DLB corner
 
-  #ifdef F5
-    const int COUNT_SUB = 4; // number of symmetries used for reduction
-    const int N_FSLICE1 = 255664;
-    const int N_CORNERS = 10368;
-    const int ROT = 36; // 90 degree rotation around FB-axis
-  #else
-    const int COUNT_SUB = 16;
-    const int N_FSLICE1 = 64430;
-    const int N_CORNERS = 2768;
-    const int ROT = 16; // 120 degree rotation around axis through URF and DLB corner
-  #endif
+  const int COUNT_SUB = 16;
+  const int COUNT_SUB1 = 8; // symmetries for reducing robot state
+  const int N_FSLICE1 = 64430;
+  const int N_CORNERS = 2768;
+  const int N_TILT = 3;
 
-  extern cubie::cube cubes[COUNT];
+  extern qubie::cube cubes[COUNT];
   extern int inv[COUNT];
   extern int effect[COUNT][3];
 
   extern int conj_move[move::COUNT][COUNT];
   extern uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   extern uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
+  extern uint16_t conj_tilt[coord::N_TILT][COUNT_SUB];
 
   extern uint32_t fslice1_sym[coord::N_FSLICE1];
   extern uint32_t corners_sym[coord::N_CORNERS];
+  extern int tilt_sym[coord::N_TILT];
   extern uint32_t fslice1_raw[N_FSLICE1];
   extern uint16_t corners_raw[N_CORNERS];
+  extern int tilt_raw[N_TILT];
   extern uint16_t fslice1_selfs[N_FSLICE1];
   extern uint16_t corners_selfs[N_CORNERS];
 

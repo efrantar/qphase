@@ -5,7 +5,7 @@
 #include <vector>
 #include <numeric>
 
-#include "cubie.h"
+#include "qubie.h"
 #include "coord.h"
 #include "face.h"
 #include "move.h"
@@ -45,10 +45,10 @@ void warmup(solve::Engine& solver, int count) {
     return;
 
   std::cout << "Warming up ..." << std::endl;
-  cubie::cube c;
+  qubie::cube c;
   std::vector<std::vector<int>> sols;
   for (int i = 0; i < count; i++) {
-    cubie::shuffle(c);
+    qubie::shuffle(c);
     solver.prepare();
     solver.solve(c, sols);
     solver.finish();
@@ -57,17 +57,17 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
-bool check(const cubie::cube &c, const std::vector<int>& sol) {
-  cubie::cube c1;
-  cubie::cube c2;
+bool check(const qubie::cube &c, const std::vector<int>& sol) {
+  qubie::cube c1;
+  qubie::cube c2;
 
   c1 = c;
   for (int m : sol) {
-    cubie::mul(c1, move::cubes[m], c2);
+    qubie::mul(c1, move::cubes[m], c2);
     std::swap(c1, c2);
   }
 
-  return c1 == cubie::SOLVED_CUBE;
+  return c1 == qubie::ID_CUBE;
 }
 
 double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vector<int>&)) {
@@ -150,9 +150,9 @@ int main(int argc, char *argv[]) {
         fstream.open(BENCH_FILE);
 
         std::string s;
-        std::vector<cubie::cube> cubes;
+        std::vector<qubie::cube> cubes;
         while (std::getline(fstream, s)) {
-          cubie::cube c;
+          qubie::cube c;
           face::to_cubie(s, c);
           cubes.push_back(c);
         }
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
     } else {
-      cubie::cube c;
+      qubie::cube c;
       std::vector<std::vector<int>> sols;
 
       if (mode == "solve") {
@@ -226,13 +226,13 @@ int main(int argc, char *argv[]) {
           std::cout << "Face-error " << err << "." << std::endl;
           continue;
         }
-        err = cubie::check(c);
+        err = qubie::check(c);
         if (err != 0) {
           std::cout << "Cubie-error " << err << "." << std::endl;
           continue;
         }
       } else if (mode == "scramble") {
-        cubie::shuffle(c);
+        qubie::shuffle(c);
         std::cout << face::from_cubie(c) << std::endl;
       } else {
         std::cout << "Error." << std::endl;

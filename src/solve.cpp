@@ -223,18 +223,18 @@ namespace solve {
     // `sols` is always emptied after a solve
   }
 
-  void Engine::solve(const cubie::cube& c, std::vector<std::vector<int>>& res) {
+  void Engine::solve(const qubie::cube& c, std::vector<std::vector<int>>& res) {
     prepare(); // make sure we are prepared; will do nothing if that should already be the case
 
-    cubie::cube tmp1, tmp2;
-    cubie::cube invc;
-    cubie::inv(c, invc);
+    qubie::cube tmp1, tmp2;
+    qubie::cube invc;
+    qubie::inv(c, invc);
 
     for (int dir = 0; dir < N_DIRS; dir++) {
-      const cubie::cube& c1 = (dir & 1) ? invc : c; // reference is enough, we do not need to copy
+      const qubie::cube& c1 = (dir & 1) ? invc : c; // reference is enough, we do not need to copy
       int rot = sym::ROT * (dir / 2);
-      cubie::mul(sym::cubes[sym::inv[rot]], c1, tmp1);
-      cubie::mul(tmp1, sym::cubes[rot], tmp2);
+      qubie::mul(sym::cubes[sym::inv[rot]], c1, tmp1);
+      qubie::mul(tmp1, sym::cubes[rot], tmp2);
 
       dirs[dir].flip = coord::get_flip(tmp2);
       dirs[dir].slice = coord::get_slice(tmp2);

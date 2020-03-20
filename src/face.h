@@ -27,15 +27,14 @@
 
 #include <string>
 #include <unordered_map>
-#include "cubie.h"
+#include "qubie.h"
 
 namespace face {
 
+  const int COUNT = 6;
   const int N_FACELETS = 54; // 9 * 6
 
   namespace color {
-    const int COUNT = 6;
-
     const int U = 0;
     const int R = 1;
     const int F = 2;
@@ -49,6 +48,35 @@ namespace face {
       {'U', U}, {'R', R}, {'F', F}, {'D', D}, {'L', L}, {'B', B}
     };
   }
+  using namespace color;
+
+  // All valid tilts of a cube
+  const int PERMS[][6] = {
+    {U, R, F, D, L, B},
+    {U, B, R, D, F, L},
+    {U, L, B, D, R, F},
+    {U, F, L, D, B, R},
+    {R, U, B, L, D, F},
+    {F, U, R, B, D, L},
+    {L, U, F, R, D, B},
+    {B, U, L, F, D, R},
+    {R, F, U, L, B, D},
+    {B, R, U, F, L, D},
+    {L, B, U, R, F, D},
+    {F, L, U, B, R, D},
+    {D, R, B, U, L, F},
+    {D, F, R, U, B, L},
+    {D, L, F, U, R, B},
+    {D, B, L, U, F, R},
+    {R, D, F, L, U, B},
+    {B, D, R, F, U, L},
+    {L, D, B, R, U, F},
+    {F, D, L, B, U, R},
+    {R, B, D, L, F, U},
+    {F, R, D, B, L, U},
+    {L, F, D, R, B, U},
+    {B, L, D, F, R, U}
+  };
 
   /* Facelet positions corresponding to cubies */
   const int CORNLETS[][3] = {
@@ -60,8 +88,8 @@ namespace face {
     {30, 43}, {34, 52}, {23, 12}, {21, 41}, {50, 39}, {48, 14}
   };
 
-  int to_cubie(const std::string& s, cubie::cube &c);
-  std::string from_cubie(const cubie::cube &c);
+  int to_cubie(const std::string& s, qubie::cube& c);
+  std::string from_cubie(const qubie::cube& c);
 
   void init();
 

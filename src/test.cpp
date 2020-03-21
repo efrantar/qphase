@@ -231,13 +231,13 @@ int main() {
   coord::init();
   sym::init();
   state::init();
-  // prun::init();
+  prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
 
   test_cubie();
   test_coord();
   test_move();
-  // test_sym();
+  test_sym();
   // test_prun();
 
   return 0;

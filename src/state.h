@@ -27,7 +27,11 @@ namespace state {
     {{R, D, F, L, U, B}}
   };
 
+  extern int summ_cls[N_SUMM];
+  extern int summ_rep[N_SUMM_SYM];
   extern int cored_summ[N_SUMM][sym::COUNT_SUB];
+
+  extern int move_summ[N_SUMM][move::COUNT];
   extern move::mask moves[N_SUMM_SYM];
 
   void mul(const cube& c1, const cube& c2, cube& into);

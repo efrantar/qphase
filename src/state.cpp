@@ -8,7 +8,11 @@ namespace state {
 
   using namespace move;
 
+  int summ_cls[N_SUMM];
+  int summ_rep[N_SUMM_SYM];
   int cored_summ[N_SUMM][sym::COUNT_SUB];
+
+  int move_summ[N_SUMM][move::COUNT];
   move::mask moves[N_SUMM_SYM];
 
   const int N_AXPERM = 6;
@@ -50,8 +54,6 @@ namespace state {
   int axperm_dec[N_AXPERM];
 
   cube sym_cubes[sym::COUNT];
-  int summ_cls[N_SUMM];
-  int summ_rep[N_SUMM_SYM];
 
   void init() {
     int perm[] = {0, 1, 2};
@@ -115,6 +117,16 @@ namespace state {
         mul(sym_cubes[s], c, tmp);
         mul(tmp, sym_cubes[sym::inv[s]], c1);
         cored_summ[summ][s] = summ_cls[get_summ(c1)];
+      }
+    }
+
+    for (int summ = 0; summ < N_SUMM; summ++) {
+      set_summ(c, summ);
+      for (int m = 0; m < move::COUNT_CUBE; m++)
+        move_summ[summ][m] = summ;
+      for (int m = move::COUNT_CUBE; m < move::COUNT; m++) {
+        mul(c, MOVES[m - move::COUNT_CUBE], c1);
+        move_summ[summ][m] = get_summ(c1);
       }
     }
 

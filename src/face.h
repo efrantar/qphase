@@ -26,7 +26,6 @@
 #define __FACE__
 
 #include <string>
-#include <unordered_map>
 #include "qubie.h"
 
 namespace face {
@@ -43,10 +42,6 @@ namespace face {
     const int B = 5;
 
     const char NAMES[] = {'U', 'R', 'F', 'D', 'L', 'B'};
-
-    const std::unordered_map<char, int> FROM_NAME = {
-      {'U', U}, {'R', R}, {'F', F}, {'D', D}, {'L', L}, {'B', B}
-    };
   }
   using namespace color;
 
@@ -76,16 +71,6 @@ namespace face {
     {F, R, D, B, L, U},
     {L, F, D, R, B, U},
     {B, L, D, F, R, U}
-  };
-
-  /* Facelet positions corresponding to cubies */
-  const int CORNLETS[][3] = {
-    {8, 9, 20}, {6, 18, 38}, {0, 36, 47}, {2, 45, 11},
-    {29, 26, 15}, {27, 44, 24}, {33, 53, 42}, {35, 17, 51}
-  };
-  const int EDGELETS[][2] = {
-    {5, 10}, {7, 19}, {3, 37}, {1, 46}, {32, 16}, {28, 25},
-    {30, 43}, {34, 52}, {23, 12}, {21, 41}, {50, 39}, {48, 14}
   };
 
   int to_cubie(const std::string& s, qubie::cube& c);

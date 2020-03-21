@@ -11,7 +11,7 @@ namespace sym {
   int inv[COUNT];
   int effect[COUNT][3];
 
-  int conj_move[move::COUNT][COUNT];
+  int conj_move[move::COUNT_CUBE][COUNT];
   uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
 
@@ -81,11 +81,11 @@ namespace sym {
       }
     }
 
-    for (int m = 0; m < move::COUNT; m++) {
+    for (int m = 0; m < move::COUNT_CUBE; m++) {
       for (int s = 0; s < COUNT; s++) {
         cubie::mul(cubes[s], move::cubes[m], tmp);
         cubie::mul(tmp, cubes[inv[s]], c);
-        for (int conj = 0; conj < move::COUNT; conj++) {
+        for (int conj = 0; conj < move::COUNT_CUBE; conj++) {
           if (c == move::cubes[conj]) {
             conj_move[m][s] = conj;
             break;
@@ -95,6 +95,7 @@ namespace sym {
     }
 
     /* Figure this out right here instead of defining even more "weird" constants */
+    /* TODO
     int per_axis = move::COUNT1 / 3;
     int per_face = 3;
     #ifdef QT
@@ -107,6 +108,7 @@ namespace sym {
         effect[s][ax] |= (conj_move[per_axis * ax][inv[s]] % per_face != 0); // inv
       }
     }
+     */
   }
 
   void init_conjcoord(

@@ -2,6 +2,7 @@
 #define __STATE__
 
 #include "face.h"
+#include "move.h"
 #include "sym.h"
 
 namespace state {
@@ -20,9 +21,14 @@ namespace state {
     {U, R, F, D, L, B}
   };
 
-  extern int cored_summ[N_SUMM][sym::COUNT_SUB];
+  const cube MOVES[] = {
+    {{U, D, R, D, F, L}},
+    {{F, R, D, B, L, U}},
+    {{R, D, F, L, U, B}}
+  };
 
-  extern int move_map[N_TILT][100]; // TODO: actual count
+  extern int cored_summ[N_SUMM][sym::COUNT_SUB];
+  extern move::mask moves[N_SUMM_SYM];
 
   void mul(const cube& c1, const cube& c2, cube& into);
   void inv(const cube& c, cube& into);

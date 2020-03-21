@@ -11,11 +11,11 @@ namespace coord {
   const int N_C12K4 = 495; // binom(12, 4)
   const int N_PERM4 = 24; // 4!
 
-  uint16_t move_flip[N_FLIP][move::COUNT];
-  uint16_t move_twist[N_TWIST][move::COUNT];
-  uint16_t move_edges4[N_SLICE][move::COUNT];
-  uint16_t move_corners[N_CORNERS][move::COUNT];
-  uint16_t move_udedges2[N_UDEDGES2][move::COUNT];
+  uint16_t move_flip[N_FLIP][move::COUNT_CUBE];
+  uint16_t move_twist[N_TWIST][move::COUNT_CUBE];
+  uint16_t move_edges4[N_SLICE][move::COUNT_CUBE];
+  uint16_t move_corners[N_CORNERS][move::COUNT_CUBE];
+  uint16_t move_udedges2[N_UDEDGES2][move::COUNT_CUBE];
 
   /* Used for en-/decoding pos-perm coords */
   uint8_t enc_perm[1 << (4 * 2)]; // encode 4-elem perm as 8 bits
@@ -215,7 +215,7 @@ namespace coord {
   // Computing only exactly the moves that are needed and storing them tightly would only make things more complicated
   // during solving (in exchange for completely negligible setup/memory-gains)
   void init_move(
-    uint16_t move_coord[][move::COUNT],
+    uint16_t move_coord[][move::COUNT_CUBE],
     int n_coord,
     int (*get_coord)(const cubie::cube&),
     void (*set_coord)(cubie::cube&, int),
@@ -228,14 +228,14 @@ namespace coord {
     for (int coord = 0; coord < n_coord; coord++) {
       set_coord(c1, coord);
 
-      if (phase2) { // UDEDGES2 is only defined for phase 2 moves
-        for (move::mask moves = move::p2mask; moves; moves &= moves - 1) {
+      if (phase2) { // UDEDGES2 is only defined for phase 2 moves; make sure not to ignore state moves
+        for (move::mask moves = move::p2mask & (move::bit(move::COUNT_CUBE) - 1); moves; moves &= moves - 1) {
           int m = ffsll(moves) - 1;
           mul(c1, move::cubes[m], c2);
           move_coord[coord][m] = get_coord(c2);
         }
       } else {
-        for (int m = 0; m < move::COUNT; m++) {
+        for (int m = 0; m < move::COUNT_CUBE; m++) {
           mul(c1, move::cubes[m], c2);
           move_coord[coord][m] = get_coord(c2);
         }

@@ -29,7 +29,7 @@ namespace sym {
   extern int inv[COUNT];
   extern int effect[COUNT][3];
 
-  extern int conj_move[move::COUNT][COUNT];
+  extern int conj_move[move::COUNT_CUBE][COUNT];
   extern uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   extern uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
 

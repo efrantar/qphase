@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 #include <strings.h>
+#include <vector>
 
 #include "coord.h"
 #include "cubie.h"
@@ -58,7 +59,10 @@ void test_getset(int (*get_coord)(const cubie::cube&), void (*set_coord)(cubie::
   ok();
 }
 
-void test_movecoord(uint16_t move_coord[][move::COUNT], int n_coord, move::mask moves = move::p1mask | move::p2mask) {
+void test_movecoord(
+  uint16_t move_coord[][move::COUNT_CUBE],int n_coord, move::mask moves = move::p1mask | move::p2mask
+) {
+  moves &= move::bit(move::COUNT_CUBE) - 1; // state moves must not be applied to coords
   for (int coord = 0; coord < n_coord; coord++) {
     for (; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
@@ -94,7 +98,7 @@ void test_move() {
   std::cout << "Testing move level ..." << std::endl;
 
   cubie::cube c;
-  for (int m = 0; m < move::COUNT; m++) {
+  for (int m = 0; m < move::COUNT_CUBE; m++) {
     if (move::inv[move::inv[m]] != m)
       error();
     cubie::mul(move::cubes[m], move::cubes[move::inv[m]], c);
@@ -120,12 +124,13 @@ void test_move() {
   std::cout << std::endl;
 
   std::cout << "Forbidden:" << std::endl;
-  for (int m = 0; m < move::COUNT; m++) {
+  for (int m = 0; m < move::COUNT_CUBE; m++) {
     std::cout << move::names[m] << ": ";
-    for (int m1 = 0; m1 < move::COUNT; m1++) {
+    for (int m1 = 0; m1 < move::COUNT_CUBE; m1++) {
       if (!move::in(m1, move::next[m]))
         std::cout << move::names[m1] << " ";
     }
+    /* TODO
     if (move::qt_skip[m] != 0) {
       std::cout << "| ";
       for (int m1 = 0; m1 < move::COUNT; m1++) {
@@ -133,6 +138,7 @@ void test_move() {
           std::cout << move::names[m1] << " ";
       }
     }
+     */
     std::cout << std::endl;
   }
 
@@ -156,7 +162,7 @@ void test_sym() {
   test_conj(sym::conj_udedges2, coord::N_UDEDGES2);
 }
 
-/*
+/* TODO
 void test_prun() {
   std::cout << "Testing pruning ..." << std::endl;
 
@@ -230,8 +236,8 @@ int main() {
 
   test_cubie();
   test_coord();
-  // test_move();
-  test_sym();
+  test_move();
+  // test_sym();
   // test_prun();
 
   return 0;

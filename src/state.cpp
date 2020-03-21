@@ -1,8 +1,15 @@
 #include "state.h"
 
 #include <algorithm>
+#include <vector>
+#include "move.h"
 
 namespace state {
+
+  using namespace move;
+
+  int cored_summ[N_SUMM][sym::COUNT_SUB];
+  move::mask moves[N_SUMM_SYM];
 
   const int N_AXPERM = 6;
 
@@ -33,13 +40,18 @@ namespace state {
     {B, L, D, F, R, U}
   };
 
+  std::vector<int> blocked[N_SUMM_SYM] = {
+    {U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3, RUD},
+    {R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3, RRL},
+    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3, RFB}
+  };
+
   int axperm_enc[27];
   int axperm_dec[N_AXPERM];
 
   cube sym_cubes[sym::COUNT];
   int summ_cls[N_SUMM];
   int summ_rep[N_SUMM_SYM];
-  int cored_summ[N_SUMM][sym::COUNT_SUB];
 
   void init() {
     int perm[] = {0, 1, 2};
@@ -73,11 +85,11 @@ namespace state {
       }
     }
 
-    std::fill(summ_cls, summ_cls + N_TILT, -1);
+    std::fill(summ_cls, summ_cls + N_SUMM, -1);
     cube c1;
     int cls = 0;
 
-    for (int summ = 0; summ < N_TILT; summ++) {
+    for (int summ = 0; summ < N_SUMM; summ++) {
       set_summ(c, summ);
 
       if (summ_cls[summ] != -1)
@@ -104,6 +116,12 @@ namespace state {
         mul(tmp, sym_cubes[sym::inv[s]], c1);
         cored_summ[summ][s] = summ_cls[get_summ(c1)];
       }
+    }
+
+    for (int ssumm = 0; ssumm < N_SUMM_SYM; ssumm++) {
+      for (int m : blocked[ssumm])
+        moves[ssumm] |= move::bit(m);
+      moves[ssumm] = ~moves[ssumm];
     }
   }
 

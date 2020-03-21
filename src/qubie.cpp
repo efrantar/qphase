@@ -37,11 +37,11 @@ namespace qubie {
     }
   }
 
-  void mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into) {
+  void mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into, bool tilt) {
     corner::mul(c1, c2, into);
     edge::mul(c1, c2, into);
-    for (int i = 0; i < face::COUNT; i++)
-      into.fperm[i] = c1.fperm[c2.fperm[i]];
+    if (tilt)
+      face::mul(c1, c2, into);
   }
 
   // Permutation parity =  #inversions % 2
@@ -56,7 +56,7 @@ namespace qubie {
     return par & 1;
   }
 
-  void inv(const cube& c, cube& into) {
+  void inv(const cube& c, cube& into, bool tilt) {
     for (int corner = 0; corner < corner::COUNT; corner++)
       into.cperm[c.cperm[corner]] = corner; // inv[a[i]] = i
     for (int edge = 0; edge < edge::COUNT; edge++)
@@ -65,11 +65,14 @@ namespace qubie {
       into.cori[i] = inv_cori[c.cori[into.cperm[i]]];
     for (int i = 0; i < edge::COUNT; i++)
       into.eori[i] = c.eori[into.eperm[i]];
-    for (int face = 0; face < face::COUNT; face++)
-      into.fperm[c.fperm[face]] = face;
+
+    if (tilt) {
+      for (int face = 0; face < face::COUNT; face++)
+        into.fperm[c.fperm[face]] = face;
+    }
   }
 
-  int check(const cube& c) {
+  int check(const cube& c, bool tilt) {
     bool corners[corner::COUNT] = {};
     int cori_sum = 0;
 
@@ -109,16 +112,18 @@ namespace qubie {
     if (parity(c.cperm, corner::COUNT) != parity(c.eperm, edge::COUNT))
       return 9; // corner and edge permutation parity mismatch
 
-    bool ok = false;
-    for (int i = 0; i < coord::N_TILT; i++) {
-      // Note that the default tilt is the first in the permutation list, thus this will break immediately
-      if (std::equal(c.fperm, c.fperm + face::COUNT, face::PERMS[i])) {
-        ok = true;
-        break;
+    if (tilt) {
+      bool ok = false;
+      for (int i = 0; i < coord::N_TILT; i++) {
+        // Note that the default tilt is the first in the permutation list, thus this will break immediately
+        if (std::equal(c.fperm, c.fperm + face::COUNT, face::PERMS[i])) {
+          ok = true;
+          break;
+        }
       }
+      if (!ok)
+        return 10; // invalid face permutation
     }
-    if (!ok)
-      return 10; // invalid face permutation
 
     return 0;
   }
@@ -138,13 +143,13 @@ namespace qubie {
     std::iota(c.fperm, c.fperm + face::COUNT, 0);
   }
 
+  // TODO: check equality also for tilt (but this causes problems in symmetry setup)
   bool operator==(const cube& c1, const cube& c2) {
     return
       std::equal(c1.cperm, c1.cperm + corner::COUNT, c2.cperm) &&
       std::equal(c1.eperm, c1.eperm + edge::COUNT, c2.eperm) &&
       std::equal(c1.cori, c1.cori + corner::COUNT, c2.cori) &&
-      std::equal(c1.eori, c1.eori + edge::COUNT, c2.eori) &&
-      std::equal(c1.fperm, c1.fperm + face::COUNT, c2.fperm)
+      std::equal(c1.eori, c1.eori + edge::COUNT, c2.eori)
     ;
   }
 

@@ -27,7 +27,7 @@ namespace sym {
   extern int conj_move[move::COUNT][COUNT];
   extern uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   extern uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
-  extern uint16_t conj_tilt[coord::N_TILT][COUNT_SUB];
+  extern int conj_tilt[coord::N_TILT][COUNT_SUB];
 
   extern uint32_t fslice1_sym[coord::N_FSLICE1];
   extern uint32_t corners_sym[coord::N_CORNERS];

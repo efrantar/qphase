@@ -48,6 +48,11 @@ namespace face {
     }
   }
 
+  void mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into) {
+    for (int i = 0; i < face::COUNT; i++)
+      into.fperm[i] = c1.fperm[c2.fperm[i]];
+  }
+
   int to_cubie(const std::string& s, qubie::cube& c) {
     for (int i = 0; i < N_FACELETS; i++) {
       if (color::FROM_NAME.find(s[i]) == color::FROM_NAME.end())

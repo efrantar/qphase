@@ -17,7 +17,7 @@ namespace sym {
   int conj_move[move::COUNT][COUNT];
   uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
-  uint16_t conj_tilt[coord::N_TILT][COUNT_SUB];
+  int conj_tilt[coord::N_TILT][COUNT_SUB];
 
   uint32_t fslice1_sym[coord::N_FSLICE1];
   uint32_t corners_sym[coord::N_CORNERS];
@@ -79,6 +79,7 @@ namespace sym {
       }
     }
 
+    // TODO: somehow do equality without
     for (int i = 0; i < COUNT; i++) {
       for (int j = 0; j < COUNT; j++) {
         qubie::mul(cubes[i], cubes[j], c);
@@ -205,10 +206,19 @@ namespace sym {
 
   // There are no self-symmetries here
   void init_tilt() {
-    std::fill(tilt_sym, tilt_sym + coord::N_TILT, EMPTY);
-
     qubie::cube c = qubie::ID_CUBE;
     qubie::cube c1;
+
+    for (int tilt = 0; tilt < coord::N_TILT; tilt++) {
+      coord::set_tilt(c, tilt);
+      conj_tilt[tilt][0] = tilt; // sym 0 is identity
+      for (int s = 1; s < COUNT_SUB; s++) {
+        qubie::mul(c, cubes[inv[s]], c1);
+        conj_tilt[tilt][s] = coord::get_tilt(c1);
+      }
+    }
+    
+    std::fill(tilt_sym, tilt_sym + coord::N_TILT, EMPTY);
     int cls = 0;
 
     for (int tilt = 0; tilt < coord::N_TILT; tilt++) {
@@ -234,10 +244,9 @@ namespace sym {
 
     init_conjcoord(conj_twist, coord::N_TWIST, coord::get_twist, coord::set_twist, qubie::corner::mul);
     init_conjcoord(conj_udedges2, coord::N_UDEDGES2, coord::get_udedges2, coord::set_udedges2, qubie::edge::mul);
-    init_conjcoord(conj_tilt, coord::N_TILT, coord::get_tilt, coord::set_tilt, qubie::mul);
-
     init_fslice1();
     init_corners();
+
     init_tilt();
   }
 

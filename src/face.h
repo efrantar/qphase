@@ -73,6 +73,8 @@ namespace face {
     {B, L, D, F, R, U}
   };
 
+  void mul(const qubie::cube& c1, const qubie::cube& c2, qubie::cube& into); // multiply only faces
+
   int to_cubie(const std::string& s, qubie::cube& c);
   std::string from_cubie(const qubie::cube& c);
 

@@ -266,7 +266,7 @@ namespace coord {
     init_move(move_twist, N_TWIST, get_twist, set_twist, qubie::corner::mul);
     init_move(move_edges4, N_SLICE, get_slice, set_slice, qubie::edge::mul);
     init_move(move_corners, N_CORNERS, get_corners, set_corners, qubie::corner::mul);
-    init_move(move_tilt, N_TILT, get_tilt, set_tilt, qubie::mul);
+    init_move(move_tilt, N_TILT, get_tilt, set_tilt, face::mul);
     init_move(move_udedges2, N_UDEDGES2, get_udedges2, set_udedges2, qubie::edge::mul, true);
   }
 

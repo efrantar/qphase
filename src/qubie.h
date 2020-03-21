@@ -77,10 +77,10 @@ namespace qubie {
     void mul(const cube& c1, const cube& c2, cube& into); // multiply only edge cubies
   }
 
-  void mul(const cube& c1, const cube& c2, cube& into); // fully multiply two cubes
-  void inv(const cube& c, cube& into);
+  void mul(const cube& c1, const cube& c2, cube& into, bool tilt = true); // fully multiply two cubes
+  void inv(const cube& c, cube& into, bool tilt = true);
   void shuffle(cube& c); // generate a uniformly random cube with default face ordering
-  int check(const cube& c); // check a cube for being solvable
+  int check(const cube& c, bool tilt = true); // check a cube for being solvable
 
   bool operator==(const cube& c1, const cube& c2);
   bool operator!=(const cube& c1, const cube& c2);

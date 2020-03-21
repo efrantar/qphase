@@ -245,14 +245,14 @@ int main() {
     {U, D, R, D, F, L}
   };
 
-  // sym::init();
+  sym::init();
   // prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
 
   test_qubie();
   test_coord();
   // test_move();
-  // test_sym();
+  test_sym();
   // test_prun();
 
   return 0;

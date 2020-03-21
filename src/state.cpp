@@ -37,9 +37,9 @@ namespace state {
   int axperm_dec[N_AXPERM];
 
   cube sym_cubes[sym::COUNT];
-
-  int summ_sym[N_SUMM];
-  int summ_raw[N_SUMM_SYM];
+  int summ_cls[N_SUMM];
+  int summ_rep[N_SUMM_SYM];
+  int cored_summ[N_SUMM][sym::COUNT_SUB];
 
   void init() {
     int perm[] = {0, 1, 2};
@@ -47,7 +47,7 @@ namespace state {
       int tmp = 9 * perm[0] + 3 * perm[1] + perm[2];
       axperm_enc[tmp] = i;
       axperm_dec[i] = tmp;
-      std::next_permutation(perm, perm + 4);
+      std::next_permutation(perm, perm + 3);
     }
 
     cube c = ID_CUBE;
@@ -63,7 +63,7 @@ namespace state {
     for (int i = 0; i < sym::COUNT; i++) {
       sym_cubes[i] = c;
 
-      if (i % 2 == 1) {
+      if (i % 4 == 3) {
         mul(c, u4, tmp);
         std::swap(tmp, c);
       }
@@ -73,33 +73,36 @@ namespace state {
       }
     }
 
-    std::fill(summ_sym, summ_sym + N_TILT, -1);
+    std::fill(summ_cls, summ_cls + N_TILT, -1);
+    cube c1;
     int cls = 0;
 
-    cube c1;
     for (int summ = 0; summ < N_TILT; summ++) {
       set_summ(c, summ);
 
-      if (summ_sym[summ] != -1)
+      if (summ_cls[summ] != -1)
         continue;
-      summ_sym[summ] = cls; // we don't need to remember the symmetry used for reduction here
-      summ_raw[cls] = summ;
+      summ_cls[summ] = cls;
+      summ_rep[cls] = summ;
 
       for (int s = 1; s < sym::COUNT_SUB; s++) {
+        // Note that we want to reduce with respect to full cube rotations, not w.r.t. symmetry of the cube itself
         mul(c, sym_cubes[s], c1);
         int summ1 = get_summ(c1);
-        if (summ_sym[summ1] == -1)
-          summ_sym[summ1] = cls;
+        if (summ_cls[summ1] == -1)
+          summ_cls[summ1] = cls;
       }
       cls++;
     }
 
     for (int summ = 0; summ < N_SUMM; summ++) {
       set_summ(c, summ);
-      cored_summ[summ][0] = summ_sym[summ];
-      for (int s = 1; s < N_SUMM; s++) {
-        mul(c, sym_cubes[sym::inv[s]], c1);
-        cored_summ[summ][0] = summ_sym[get_summ(c1)];
+      cored_summ[summ][0] = summ_cls[summ];
+      for (int s = 1; s < sym::COUNT_SUB; s++) {
+        // Here we want to conjugate with respect to an actual cube symmetry
+        mul(sym_cubes[s], c, tmp);
+        mul(tmp, sym_cubes[sym::inv[s]], c1);
+        cored_summ[summ][s] = summ_cls[get_summ(c1)];
       }
     }
   }
@@ -119,14 +122,15 @@ namespace state {
   }
 
   int get_summ(const cube& c) {
-    return axperm_enc[9 * (c.fperm[0] / 3) + 3 * (c.fperm[1] / 3) + (c.fperm[2] / 3)];
+    return axperm_enc[9 * (c.fperm[0] % 3) + 3 * (c.fperm[1] % 3) + (c.fperm[2] % 3)];
   }
 
   void set_summ(cube& c, int summ) {
+    int axperm = axperm_dec[summ];
     for (int i = 2; i >= 0; i--) {
-      c.fperm[i] = summ % 3;
-      c.fperm[i + 3] = c.fperm[i];
-      summ /= 3;
+      c.fperm[i] = axperm % 3;
+      c.fperm[i + 3] = c.fperm[i] + 3;
+      axperm /= 3;
     }
   }
 

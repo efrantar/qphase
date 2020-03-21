@@ -11,6 +11,7 @@
 #include "cubie.h"
 #include "move.h"
 #include "prun.h"
+#include "state.h"
 #include "sym.h"
 
 inline void ok() { std::cout << "Ok." << std::endl; }
@@ -223,12 +224,13 @@ int main() {
   move::init();
   coord::init();
   sym::init();
+  state::init();
   // prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
 
   test_cubie();
   test_coord();
-  test_move();
+  // test_move();
   test_sym();
   // test_prun();
 

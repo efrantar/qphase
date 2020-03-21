@@ -20,7 +20,9 @@ namespace state {
     {U, R, F, D, L, B}
   };
 
-  int cored_summ[N_SUMM][sym::COUNT_SUB];
+  extern int cored_summ[N_SUMM][sym::COUNT_SUB];
+
+  extern int move_map[N_TILT][100]; // TODO: actual count
 
   void mul(const cube& c1, const cube& c2, cube& into);
   void inv(const cube& c, cube& into);
@@ -30,6 +32,8 @@ namespace state {
   int get_tilt(const cube& c);
   void set_summ(cube& c, int summ);
   void set_tilt(cube& c, int tilt);
+
+  void init();
 
 }
 

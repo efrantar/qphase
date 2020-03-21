@@ -8,39 +8,38 @@
 #include <strings.h>
 
 #include "coord.h"
-#include "face.h"
+#include "cubie.h"
 #include "move.h"
 #include "prun.h"
-#include "qubie.h"
 #include "sym.h"
 
 inline void ok() { std::cout << "Ok." << std::endl; }
 inline void error() { std::cout << "Error." << std::endl; }
 
-void test_qubie() {
-  std::cout << "Testing qubie level ..." << std::endl;
-  qubie::cube c = qubie::ID_CUBE;
+void test_cubie() {
+  std::cout << "Testing cubie level ..." << std::endl;
+  cubie::cube c = cubie::SOLVED_CUBE;
 
-  qubie::cube tmp1, tmp2;
-  qubie::inv(c, tmp1);
+  cubie::cube tmp1, tmp2;
+  cubie::inv(c, tmp1);
   if (c != tmp1)
     error();
-  qubie::mul(c, tmp1, tmp2);
+  cubie::mul(c, tmp1, tmp2);
   if (c != tmp2)
     error();
 
-  qubie::shuffle(c);
-  qubie::inv(c, tmp1);
-  qubie::mul(c, tmp1, tmp2);
-  if (tmp2 != qubie::ID_CUBE)
+  cubie::shuffle(c);
+  cubie::inv(c, tmp1);
+  cubie::mul(c, tmp1, tmp2);
+  if (tmp2 != cubie::SOLVED_CUBE)
     error();
 
   for (int i = 0; i < 100; i++) {
-    qubie::shuffle(c);
-    if (qubie::check(c) != 0)
+    cubie::shuffle(c);
+    if (cubie::check(c) != 0)
       error();
   }
-  qubie::shuffle(c);
+  cubie::shuffle(c);
   std::swap(c.cperm[0], c.cperm[1]);
   if (check(c) == 0)
     error();
@@ -48,8 +47,8 @@ void test_qubie() {
   ok();
 }
 
-void test_getset(int (*get_coord)(const qubie::cube&), void (*set_coord)(qubie::cube&, int), int count) {
-  qubie::cube c;
+void test_getset(int (*get_coord)(const cubie::cube&), void (*set_coord)(cubie::cube&, int), int count) {
+  cubie::cube c;
   for (int i = 0; i < count; i++) {
     set_coord(c, i);
     if (get_coord(c) != i)
@@ -79,7 +78,6 @@ void test_coord() {
   test_getset(coord::get_uedges, coord::set_uedges, coord::N_UEDGES);
   test_getset(coord::get_dedges, coord::set_dedges, coord::N_DEDGES);
   test_getset(coord::get_corners, coord::set_corners, coord::N_CORNERS);
-  test_getset(coord::get_tilt, coord::set_tilt, coord::N_TILT);
 
   test_getset(coord::get_slice1, coord::set_slice1, coord::N_SLICE1);
   test_getset(coord::get_udedges2, coord::set_udedges2, coord::N_UDEDGES2);
@@ -94,15 +92,15 @@ void test_coord() {
 void test_move() {
   std::cout << "Testing move level ..." << std::endl;
 
-  qubie::cube c;
+  cubie::cube c;
   for (int m = 0; m < move::COUNT; m++) {
     if (move::inv[move::inv[m]] != m)
       error();
-    qubie::mul(move::cubes[m], move::cubes[move::inv[m]], c);
-    if (c != qubie::ID_CUBE)
+    cubie::mul(move::cubes[m], move::cubes[move::inv[m]], c);
+    if (c != cubie::SOLVED_CUBE)
       error();
-    qubie::mul(move::cubes[move::inv[m]], move::cubes[m], c);
-    if (c != qubie::ID_CUBE)
+    cubie::mul(move::cubes[move::inv[m]], move::cubes[m], c);
+    if (c != cubie::SOLVED_CUBE)
       error();
   }
   ok();
@@ -205,55 +203,32 @@ void test_prun() {
 
   ok();
 }
-*/
+ */
 
-bool check(const qubie::cube &c, const std::vector<int>& sol) {
-  qubie::cube c1;
-  qubie::cube c2;
+bool check(const cubie::cube &c, const std::vector<int>& sol) {
+  cubie::cube c1;
+  cubie::cube c2;
 
   c1 = c;
   for (int m : sol) {
-    qubie::mul(c1, move::cubes[m], c2);
+    cubie::mul(c1, move::cubes[m], c2);
     std::swap(c1, c2);
   }
 
-  return c1 == qubie::ID_CUBE;
+  return c1 == cubie::SOLVED_CUBE;
 }
-
-using namespace qubie;
-using namespace face::color;
 
 int main() {
   auto tick = std::chrono::high_resolution_clock::now();
   move::init();
   coord::init();
-
-  qubie::cube x = {
-    {URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB},
-    {UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR},
-    {}, {},
-    {F, R, D, B, L, U}
-  };
-  qubie::cube y = {
-    {URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB},
-    {UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR},
-    {}, {},
-    {R, D, F, L, U, B}
-  };
-  qubie::cube z = {
-    {URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB},
-    {UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR},
-    {}, {},
-    {U, D, R, D, F, L}
-  };
-
   sym::init();
   // prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
 
-  test_qubie();
+  test_cubie();
   test_coord();
-  // test_move();
+  test_move();
   test_sym();
   // test_prun();
 

@@ -4,12 +4,9 @@
 #include <bitset>
 #include <strings.h>
 
-#include "face.h"
-#include "qubie.h"
+#include "cubie.h"
 
 namespace coord {
-
-  using namespace face::color;
 
   const int N_C12K4 = 495; // binom(12, 4)
   const int N_PERM4 = 24; // 4!
@@ -18,7 +15,6 @@ namespace coord {
   uint16_t move_twist[N_TWIST][move::COUNT];
   uint16_t move_edges4[N_SLICE][move::COUNT];
   uint16_t move_corners[N_CORNERS][move::COUNT];
-  uint16_t move_tilt[N_TILT][move::COUNT];
   uint16_t move_udedges2[N_UDEDGES2][move::COUNT];
 
   /* Used for en-/decoding pos-perm coords */
@@ -44,8 +40,8 @@ namespace coord {
     }
 
     int i = 0;
-    for (int comb = 0; comb < (1 << qubie::edge::COUNT); comb++) {
-      if (std::bitset<qubie::edge::COUNT>(comb).count() == 4) {
+    for (int comb = 0; comb < (1 << cubie::edge::COUNT); comb++) {
+      if (std::bitset<cubie::edge::COUNT>(comb).count() == 4) {
         enc_comb[comb] = i;
         dec_comb[i] = comb;
         i++;
@@ -141,91 +137,79 @@ namespace coord {
     }
   }
 
-  int get_twist(const qubie::cube& c) {
-    return get_ori(c.cori, qubie::corner::COUNT, 3);
+  int get_twist(const cubie::cube& c) {
+    return get_ori(c.cori, cubie::corner::COUNT, 3);
   }
 
-  void set_twist(qubie::cube& c, int twist) {
-    set_ori(twist, c.cori, qubie::corner::COUNT, 3);
+  void set_twist(cubie::cube& c, int twist) {
+    set_ori(twist, c.cori, cubie::corner::COUNT, 3);
   }
 
-  int get_flip(const qubie::cube& c) {
-    return get_ori(c.eori, qubie::edge::COUNT, 2);
+  int get_flip(const cubie::cube& c) {
+    return get_ori(c.eori, cubie::edge::COUNT, 2);
   }
 
-  void set_flip(qubie::cube& c, int flip) {
-    set_ori(flip, c.eori, qubie::edge::COUNT, 2);
+  void set_flip(cubie::cube& c, int flip) {
+    set_ori(flip, c.eori, cubie::edge::COUNT, 2);
   }
 
-  int get_slice(const qubie::cube& c) {
-    return get_combperm(c.eperm, qubie::edge::COUNT, 0xf00);
+  int get_slice(const cubie::cube& c) {
+    return get_combperm(c.eperm, cubie::edge::COUNT, 0xf00);
   }
 
-  void set_slice(qubie::cube& c, int slice) {
-    set_combperm(slice / N_PERM4, slice % N_PERM4, c.eperm, qubie::edge::COUNT, qubie::edge::FR);
+  void set_slice(cubie::cube& c, int slice) {
+    set_combperm(slice / N_PERM4, slice % N_PERM4, c.eperm, cubie::edge::COUNT, cubie::edge::FR);
   }
 
-  int get_uedges(const qubie::cube& c) {
-    return get_combperm(c.eperm, qubie::edge::COUNT, 0x00f);
+  int get_uedges(const cubie::cube& c) {
+    return get_combperm(c.eperm, cubie::edge::COUNT, 0x00f);
   }
 
-  void set_uedges(qubie::cube& c, int uedges) {
-    set_combperm(uedges / N_PERM4, uedges % N_PERM4, c.eperm, qubie::edge::COUNT, qubie::edge::UR);
+  void set_uedges(cubie::cube& c, int uedges) {
+    set_combperm(uedges / N_PERM4, uedges % N_PERM4, c.eperm, cubie::edge::COUNT, cubie::edge::UR);
   }
 
-  int get_dedges(const qubie::cube& c) {
-    return get_combperm(c.eperm, qubie::edge::COUNT, 0x0f0);
+  int get_dedges(const cubie::cube& c) {
+    return get_combperm(c.eperm, cubie::edge::COUNT, 0x0f0);
   }
 
-  void set_dedges(qubie::cube& c, int dedges) {
-    set_combperm(dedges / N_PERM4, dedges % N_PERM4, c.eperm, qubie::edge::COUNT, qubie::edge::DR);
+  void set_dedges(cubie::cube& c, int dedges) {
+    set_combperm(dedges / N_PERM4, dedges % N_PERM4, c.eperm, cubie::edge::COUNT, cubie::edge::DR);
   }
 
-  int get_corners(const qubie::cube& c) {
+  int get_corners(const cubie::cube& c) {
     return get_perm8(c.cperm);
   }
 
-  void set_corners(qubie::cube& c, int corners) {
+  void set_corners(cubie::cube& c, int corners) {
     set_perm8(corners, c.cperm);
   }
 
   /* Dedicated methods again more efficient than `*_posperm()` */
 
-  int get_slice1(const qubie::cube& c) {
+  int get_slice1(const cubie::cube& c) {
     int slice1 = 0;
-    for (int i = qubie::edge::COUNT - 1; i >= 0; i--) {
-      if (c.eperm[i] >= qubie::edge::FR)
+    for (int i = cubie::edge::COUNT - 1; i >= 0; i--) {
+      if (c.eperm[i] >= cubie::edge::FR)
         slice1 |= 1 << i;
     }
     return enc_comb[slice1];
   }
 
-  void set_slice1(qubie::cube& c, int slice1) {
+  void set_slice1(cubie::cube& c, int slice1) {
     slice1 = dec_comb[slice1];
-    int j = qubie::edge::FR;
+    int j = cubie::edge::FR;
     int cubie = 0;
-    for (int i = 0; i < qubie::edge::COUNT; i++)
+    for (int i = 0; i < cubie::edge::COUNT; i++)
       c.eperm[i] = (slice1 & (1 << i)) ? j++ : cubie++;
   }
 
-  int get_udedges2(const qubie::cube& c) {
+  int get_udedges2(const cubie::cube& c) {
     return get_perm8(c.eperm);
   }
 
-  void set_udedges2(qubie::cube& c, int udedges2) {
+  void set_udedges2(cubie::cube& c, int udedges2) {
     set_perm8(udedges2, c.eperm);
-  }
-
-  int get_tilt(const qubie::cube& c) {
-    for (int i = 0; i < N_TILT; i++) {
-      if (std::equal(c.fperm, c.fperm + face::COUNT, face::PERMS[i]))
-        return i;
-    }
-    return -1;
-  }
-
-  void set_tilt(qubie::cube& c, int tilt) {
-    std::copy(face::PERMS[tilt], face::PERMS[tilt] + face::COUNT, c.fperm);
   }
 
   // Computing only exactly the moves that are needed and storing them tightly would only make things more complicated
@@ -233,13 +217,13 @@ namespace coord {
   void init_move(
     uint16_t move_coord[][move::COUNT],
     int n_coord,
-    int (*get_coord)(const qubie::cube&),
-    void (*set_coord)(qubie::cube&, int),
-    void (*mul)(const qubie::cube&, const qubie::cube&, qubie::cube&),
+    int (*get_coord)(const cubie::cube&),
+    void (*set_coord)(cubie::cube&, int),
+    void (*mul)(const cubie::cube&, const cubie::cube&, cubie::cube&),
     bool phase2 = false
   ) {
-    qubie::cube c1 = qubie::ID_CUBE; // coords only affect perm or ori -> one would be uninitialized
-    qubie::cube c2;
+    cubie::cube c1 = cubie::SOLVED_CUBE; // coords only affect perm or ori -> one would be uninitialized
+    cubie::cube c2;
 
     for (int coord = 0; coord < n_coord; coord++) {
       set_coord(c1, coord);
@@ -262,12 +246,11 @@ namespace coord {
   void init() {
     init_encdec();
 
-    init_move(move_flip, N_FLIP, get_flip, set_flip, qubie::edge::mul);
-    init_move(move_twist, N_TWIST, get_twist, set_twist, qubie::corner::mul);
-    init_move(move_edges4, N_SLICE, get_slice, set_slice, qubie::edge::mul);
-    init_move(move_corners, N_CORNERS, get_corners, set_corners, qubie::corner::mul);
-    init_move(move_tilt, N_TILT, get_tilt, set_tilt, face::mul);
-    init_move(move_udedges2, N_UDEDGES2, get_udedges2, set_udedges2, qubie::edge::mul, true);
+    init_move(move_flip, N_FLIP, get_flip, set_flip, cubie::edge::mul);
+    init_move(move_twist, N_TWIST, get_twist, set_twist, cubie::corner::mul);
+    init_move(move_edges4, N_SLICE, get_slice, set_slice, cubie::edge::mul);
+    init_move(move_corners, N_CORNERS, get_corners, set_corners, cubie::corner::mul);
+    init_move(move_udedges2, N_UDEDGES2, get_udedges2, set_udedges2, cubie::edge::mul, true);
   }
 
 }

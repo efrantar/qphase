@@ -1,23 +1,19 @@
 #include "sym.h"
 
-#include "face.h"
-
 namespace sym {
 
-  using namespace qubie::corner;
-  using namespace qubie::edge;
-  using namespace face::color;
+  using namespace cubie::corner;
+  using namespace cubie::edge;
 
   const uint32_t EMPTY = ~uint32_t(0);
 
-  qubie::cube cubes[COUNT];
+  cubie::cube cubes[COUNT];
   int inv[COUNT];
   int effect[COUNT][3];
 
   int conj_move[move::COUNT][COUNT];
   uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
-  int conj_tilt[coord::N_TILT][COUNT_SUB];
 
   uint32_t fslice1_sym[coord::N_FSLICE1];
   uint32_t corners_sym[coord::N_CORNERS];
@@ -26,77 +22,69 @@ namespace sym {
   uint16_t fslice1_selfs[N_FSLICE1];
   uint16_t corners_selfs[N_CORNERS];
 
-  int tilt_raw[] = {0, 1, 2};
-
-
   void init_base() {
-    qubie::cube c = qubie::ID_CUBE;
-    qubie::cube tmp;
+    cubie::cube c = cubie::SOLVED_CUBE;
+    cubie::cube tmp;
 
-    // F2 and LR2 symmetries do not change the axes permutation, thus we can ignore their effect on the face-order
-    qubie::cube f2 = {
-      {DLF, DFR, DRB, DBL, UFL, URF, UBR, ULB},
-      {DL, DF, DR, DB, UL, UF, UR, UB, FL, FR, BR, BL},
-      {}, {},
-      {U, R, F, D, L, B}
-    };
-    qubie::cube u4 = {
-      {UBR, URF, UFL, ULB, DRB, DFR, DLF, DBL},
-      {UB, UR, UF, UL, DB, DR, DF, DL, BR, FR, FL, BL},
-      {}, {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1},
-      {U, B, R, D, F, L}
-    };
-    qubie::cube lr2 = {
+    cubie::cube lr2 = {
       {UFL, URF, UBR, ULB, DLF, DFR, DRB, DBL},
       {UL, UF, UR, UB, DL, DF, DR, DB, FL, FR, BR, BL},
-      {3, 3, 3, 3, 3, 3, 3, 3}, {}, // special mirror ori
-      {U, R, F, D, L, B}
+      {3, 3, 3, 3, 3, 3, 3, 3}, {} // special mirror ori
     };
-    qubie::cube urf3 = {
+    cubie::cube u4 = {
+      {UBR, URF, UFL, ULB, DRB, DFR, DLF, DBL},
+      {UB, UR, UF, UL, DB, DR, DF, DL, BR, FR, FL, BL},
+      {}, {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1}
+    };
+    cubie::cube f2 = {
+      {DLF, DFR, DRB, DBL, UFL, URF, UBR, ULB},
+      {DL, DF, DR, DB, UL, UF, UR, UB, FL, FR, BR, BL},
+      {}, {}
+    };
+    cubie::cube urf3 = {
       {URF, DFR, DLF, UFL, UBR, DRB, DBL, ULB},
       {UF, FR, DF, FL, UB, BR, DB, BL, UR, DR, DL, UL},
       {1, 2, 1, 2, 2, 1, 2, 1},
-      {1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1},
-      {F, U, R, B, D, L}
+      {1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1}
     };
 
-    // First 8 symmetries encode cube rotations also used for reducing the tilt
+    // First 4 symmetries are the ones used in F5 mode
     for (int i = 0; i < COUNT; i++) {
       cubes[i] = c;
 
-      qubie::mul(c, f2, tmp);
+      cubie::mul(c, lr2, tmp);
       std::swap(tmp, c);
 
       if (i % 2 == 1) {
-        qubie::mul(c, u4, tmp);
+        cubie::mul(c, f2, tmp);
         std::swap(tmp, c);
       }
-      if (i % 8 == 7) {
-        qubie::mul(c, lr2, tmp);
+      if (i % 4 == 3) {
+        cubie::mul(c, u4, tmp);
         std::swap(tmp, c);
       }
       if (i % 16 == 15) {
-        qubie::mul(c, urf3, tmp);
+        cubie::mul(c, urf3, tmp);
         std::swap(tmp, c);
       }
     }
 
-    // We need to ignore the tilt as LR2 cannot affect it properly
+    /* Maybe not the most efficient, but overall time spent here completely negligible. */
+
     for (int i = 0; i < COUNT; i++) {
       for (int j = 0; j < COUNT; j++) {
-        qubie::mul(cubes[i], cubes[j], c, false);
-        if (qubie::cubie_equal(c, qubie::ID_CUBE)) {
+        cubie::mul(cubes[i], cubes[j], c);
+        if (c == cubie::SOLVED_CUBE) {
           inv[i] = j;
           break;
         }
       }
     }
 
-    // TODO: fix
     for (int m = 0; m < move::COUNT; m++) {
       for (int s = 0; s < COUNT; s++) {
-        qubie::mul(cubes[s], move::cubes[m], tmp);
-        qubie::mul(tmp, cubes[inv[s]], c);
+        cubie::mul(cubes[s], move::cubes[m], tmp);
+        cubie::mul(tmp, cubes[inv[s]], c);
         for (int conj = 0; conj < move::COUNT; conj++) {
           if (c == move::cubes[conj]) {
             conj_move[m][s] = conj;
@@ -124,13 +112,13 @@ namespace sym {
   void init_conjcoord(
     uint16_t conj_coord[][COUNT_SUB],
     int n_coords,
-    int (*get_coord)(const qubie::cube&),
-    void (*set_coord)(qubie::cube&, int),
-    void (*mul)(const qubie::cube&, const qubie::cube&, qubie::cube&)
+    int (*get_coord)(const cubie::cube&),
+    void (*set_coord)(cubie::cube&, int),
+    void (*mul)(const cubie::cube&, const cubie::cube&, cubie::cube&)
   ) {
-    qubie::cube c1 = qubie::ID_CUBE; // make sure all multiplications will work
-    qubie::cube c2;
-    qubie::cube tmp;
+    cubie::cube c1 = cubie::SOLVED_CUBE; // make sure all multiplications will work
+    cubie::cube c2;
+    cubie::cube tmp;
 
     for (int coord = 0; coord < n_coords; coord++) {
       set_coord(c1, coord);
@@ -146,9 +134,9 @@ namespace sym {
   void init_fslice1() {
     std::fill(fslice1_sym, fslice1_sym + coord::N_FSLICE1, EMPTY);
 
-    qubie::cube c1 = qubie::ID_CUBE;
-    qubie::cube c2;
-    qubie::cube tmp;
+    cubie::cube c1 = cubie::SOLVED_CUBE;
+    cubie::cube c2;
+    cubie::cube tmp;
     int cls = 0;
 
     for (int slice1 = 0; slice1 < coord::N_SLICE1; slice1++) {
@@ -164,8 +152,8 @@ namespace sym {
         fslice1_selfs[cls] = 1; // symmetry 0 is identity and always a self-sym
 
         for (int s = 1; s < COUNT_SUB; s++) {
-          qubie::edge::mul(cubes[inv[s]], c1, tmp);
-          qubie::edge::mul(tmp, cubes[s], c2);
+          cubie::edge::mul(cubes[inv[s]], c1, tmp);
+          cubie::edge::mul(tmp, cubes[s], c2);
           int fslice11 = coord::fslice1(coord::get_flip(c2), coord::get_slice1(c2));
           if (fslice1_sym[fslice11] == EMPTY)
             fslice1_sym[fslice11] = COUNT_SUB * cls + s;
@@ -180,9 +168,9 @@ namespace sym {
   void init_corners() {
     std::fill(corners_sym, corners_sym + coord::N_CORNERS, EMPTY);
 
-    qubie::cube c1 = qubie::ID_CUBE;
-    qubie::cube c2;
-    qubie::cube tmp;
+    cubie::cube c1 = cubie::SOLVED_CUBE;
+    cubie::cube c2;
+    cubie::cube tmp;
     int cls = 0;
 
     for (int corners = 0; corners < coord::N_CORNERS; corners++) {
@@ -195,8 +183,8 @@ namespace sym {
       corners_selfs[cls] = 1;
 
       for (int s = 1; s < COUNT_SUB; s++) {
-        qubie::corner::mul(cubes[inv[s]], c1, tmp);
-        qubie::corner::mul(tmp, cubes[s], c2);
+        cubie::corner::mul(cubes[inv[s]], c1, tmp);
+        cubie::corner::mul(tmp, cubes[s], c2);
         int corners1 = coord::get_corners(c2);
         if (corners_sym[corners1] == EMPTY)
           corners_sym[corners1] = COUNT_SUB * cls + s;
@@ -207,50 +195,12 @@ namespace sym {
     }
   }
 
-  // There are no self-symmetries here
-  void init_tilt() {
-    qubie::cube c = qubie::ID_CUBE;
-    qubie::cube c1;
-
-    for (int tilt = 0; tilt < coord::N_TILT; tilt++) {
-      coord::set_tilt(c, tilt);
-      conj_tilt[tilt][0] = tilt; // sym 0 is identity
-      for (int s = 1; s < COUNT_SUB; s++) {
-        qubie::mul(c, cubes[inv[s]], c1);
-        conj_tilt[tilt][s] = coord::get_tilt(c1);
-      }
-    }
-    
-    std::fill(tilt_sym, tilt_sym + coord::N_TILT, EMPTY);
-    int cls = 0;
-
-    for (int tilt = 0; tilt < coord::N_TILT; tilt++) {
-      coord::set_tilt(c, tilt);
-
-      if (tilt_sym[tilt] != EMPTY)
-        continue;
-      tilt_sym[tilt] = COUNT_SUB1 * cls;
-      tilt_raw[cls] = tilt;
-
-      for (int s = 1; s < COUNT_SUB1; s++) {
-        qubie::mul(c, cubes[s], c1);
-        int tilt1 = coord::get_tilt(c1);
-        if (tilt_sym[tilt1] == EMPTY)
-          tilt_sym[tilt1] = COUNT_SUB1 * cls + s;
-      }
-      cls++;
-    }
-  }
-
   void init() {
     init_base();
-
-    init_conjcoord(conj_twist, coord::N_TWIST, coord::get_twist, coord::set_twist, qubie::corner::mul);
-    init_conjcoord(conj_udedges2, coord::N_UDEDGES2, coord::get_udedges2, coord::set_udedges2, qubie::edge::mul);
+    init_conjcoord(conj_twist, coord::N_TWIST, coord::get_twist, coord::set_twist, cubie::corner::mul);
+    init_conjcoord(conj_udedges2, coord::N_UDEDGES2, coord::get_udedges2, coord::set_udedges2, cubie::edge::mul);
     init_fslice1();
     init_corners();
-
-    init_tilt();
   }
 
 }

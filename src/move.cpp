@@ -5,8 +5,8 @@
 
 namespace move {
 
-  using namespace qubie::corner;
-  using namespace qubie::edge;
+  using namespace cubie::corner;
+  using namespace cubie::edge;
 
   /* Select moves and order according to used metric */
   #ifdef QT
@@ -58,7 +58,7 @@ namespace move {
   #endif
 
   std::string names[COUNT];
-  qubie::cube cubes[COUNT];
+  cubie::cube cubes[COUNT];
   int inv[COUNT];
 
   mask next[COUNT];
@@ -89,51 +89,45 @@ namespace move {
         unmap[map[m]] = m;
     }
 
-    qubie::cube cubes1[45];
+    cubie::cube cubes1[45];
     int inv1[45];
     mask next1[45];
     mask qt_skip1[45];
 
     std::string fnames[] = {"U", "D", "R", "L", "F", "B"};
     std::string pnames[] = {"", "2", "'"};
-    qubie::cube fcubes[] = {
+    cubie::cube fcubes[] = {
       { // U
         {UBR, URF, UFL, ULB, DFR, DLF, DBL, DRB},
         {UB, UR, UF, UL, DR, DF, DL, DB, FR, FL, BL, BR},
-        {}, {},
-        {0, 1, 2, 3, 4, 5}
+        {}, {}
       },
       { // D
         {URF, UFL, ULB, UBR, DLF, DBL, DRB, DFR},
         {UR, UF, UL, UB, DF, DL, DB, DR, FR, FL, BL, BR},
-        {}, {},
-        {0, 1, 2, 3, 4, 5}
+        {}, {}
       },
       { // R
         {DFR, UFL, ULB, URF, DRB, DLF, DBL, UBR},
         {FR, UF, UL, UB, BR, DF, DL, DB, DR, FL, BL, UR},
-        {2, 0, 0, 1, 1, 0, 0, 2}, {},
-        {0, 1, 2, 3, 4, 5}
+        {2, 0, 0, 1, 1, 0, 0, 2}, {}
       },
       { // L
         {URF, ULB, DBL, UBR, DFR, UFL, DLF, DRB},
         {UR, UF, BL, UB, DR, DF, FL, DB, FR, UL, DL, BR},
-        {0, 1, 2, 0, 0, 2, 1, 0}, {},
-        {0, 1, 2, 3, 4, 5}
+        {0, 1, 2, 0, 0, 2, 1, 0}, {}
       },
       { // F
         {UFL, DLF, ULB, UBR, URF, DFR, DBL, DRB},
         {UR, FL, UL, UB, DR, FR, DL, DB, UF, DF, BL, BR},
         {1, 2, 0, 0, 2, 1, 0, 0},
-        {0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0},
-        {0, 1, 2, 3, 4, 5}
+        {0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0}
       },
       { // B
         {URF, UFL, UBR, DRB, DFR, DLF, ULB, DBL},
         {UR, UF, UL, BR, DR, DF, DL, BL, FR, FL, UB, DB},
         {0, 0, 1, 2, 0, 0, 2, 1},
-        {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1},
-        {0, 1, 2, 3, 4, 5}
+        {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1}
       }
     };
 
@@ -151,7 +145,7 @@ namespace move {
         if (cnt == 0)
           cubes1[m] = fcubes[f1];
         else
-          qubie::mul(cubes1[m - 1], fcubes[f1], cubes1[m]);
+          cubie::mul(cubes1[m - 1], fcubes[f1], cubes1[m]);
         inv1[m] = i1 + (2 - cnt);
         next1[m] |= mask(0x7) << i1; // block any moves on same face
         #ifdef AX
@@ -171,7 +165,7 @@ namespace move {
         if (cnt == 0)
           cubes1[m] = fcubes[f2];
         else
-          qubie::mul(cubes1[m - 1], fcubes[f2], cubes1[m]);
+          cubie::mul(cubes1[m - 1], fcubes[f2], cubes1[m]);
         inv1[m] = i2 + (2 - cnt);
         next1[m] |= mask(0x3f) << i1; // block all simple moves on both faces
         #ifdef QT
@@ -186,7 +180,7 @@ namespace move {
         for (int cnt2 = 0; cnt2 < 3; cnt2++) {
           int m = i3 + 3 * cnt1 + cnt2;
           names1[m] = "(" + names1[i1 + cnt1] + " " + names1[i2 + cnt2] + ")";
-          qubie::mul(cubes1[i1 + cnt1], cubes1[i2 + cnt2], cubes1[m]);
+          cubie::mul(cubes1[i1 + cnt1], cubes1[i2 + cnt2], cubes1[m]);
           inv1[m] = i3 + 3 * (2 - cnt1) + (2 - cnt2);
           next1[m] |= mask(0x7fff) << 15 * ax; // block all simple and axial moves
         }
@@ -234,11 +228,11 @@ namespace move {
     p1mask = reindex(p1mask);
     p2mask = reindex(p2mask);
 
-    qubie::cube c;
+    cubie::cube c;
     for (int m1 = 0; m1 < 45; m1++) {
       for (int m2 = 0; m2 < 45; m2++) {
         merge[m1][m2] = -1;
-        qubie::mul(cubes1[m1], cubes1[m2], c);
+        cubie::mul(cubes1[m1], cubes1[m2], c);
         for (int i = 0; i < 45; i++) {
           if (c == cubes1[i]) {
             merge[m1][m2] = i;

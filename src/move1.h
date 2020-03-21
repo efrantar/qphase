@@ -2,7 +2,7 @@
 #define __MOVE__
 
 #include <string>
-#include "qubie.h"
+#include "cubie.h"
 
 namespace move {
 
@@ -18,7 +18,7 @@ namespace move {
     bool tilt;
 
     std::string name;
-    qubie::cube cube;
+    cubie::cube cube;
   };
 
 }

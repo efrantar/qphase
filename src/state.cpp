@@ -73,11 +73,11 @@ namespace state {
       }
     }
 
-    std::fill(summ_sym, summ_sym + coord::N_TILT, -1);
+    std::fill(summ_sym, summ_sym + N_TILT, -1);
     int cls = 0;
 
     cube c1;
-    for (int summ = 0; summ < coord::N_TILT; summ++) {
+    for (int summ = 0; summ < N_TILT; summ++) {
       set_summ(c, summ);
 
       if (summ_sym[summ] != -1)
@@ -105,17 +105,17 @@ namespace state {
   }
 
   void mul(const cube& c1, const cube& c2, cube& into) {
-    for (int i = 0; i < face::COUNT; i++)
+    for (int i = 0; i < face::color::COUNT; i++)
       into.fperm[i] = c1.fperm[c2.fperm[i]];
   }
 
   void inv(const cube& c, cube& into) {
-    for (int face = 0; face < face::COUNT; face++)
+    for (int face = 0; face < face::color::COUNT; face++)
       into.fperm[c.fperm[face]] = face;
   }
 
   bool operator==(const cube& c1, const cube& c2) {
-    return std::equal(c1.fperm, c1.fperm + face::COUNT, c2.fperm);
+    return std::equal(c1.fperm, c1.fperm + face::color::COUNT, c2.fperm);
   }
 
   int get_summ(const cube& c) {
@@ -132,14 +132,14 @@ namespace state {
 
   int get_tilt(const cube& c) {
     for (int i = 0; i < N_TILT; i++) {
-      if (std::equal(c.fperm, c.fperm + face::COUNT, face::PERMS[i]))
+      if (std::equal(c.fperm, c.fperm + face::color::COUNT, FPERMS[i]))
         return i;
     }
     return -1;
   }
 
   void set_tilt(cube& c, int tilt) {
-    std::copy(face::PERMS[tilt], face::PERMS[tilt] + face::COUNT, c.fperm);
+    std::copy(FPERMS[tilt], FPERMS[tilt] + face::color::COUNT, c.fperm);
   }
 
 }

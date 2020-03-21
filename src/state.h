@@ -13,7 +13,7 @@ namespace state {
   const int N_TILT = 24;
 
   struct cube {
-    int fperm[face::COUNT];
+    int fperm[face::color::COUNT];
   };
 
   const cube ID_CUBE = {

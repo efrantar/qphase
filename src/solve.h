@@ -60,7 +60,7 @@ namespace solve {
         int n_sols = 1, int max_len = -1, int n_splits = 1
       );
       void prepare(); // setup all threads
-      void solve(const qubie::cube& c, std::vector<std::vector<int>>& res); // actual solve
+      void solve(const cubie::cube& c, std::vector<std::vector<int>>& res); // actual solve
       void finish(); // wait for all threads to shutdown (mostly for clean program exit)
       void report_sol(searchres& sol); // report a solution; never call this from the outside
 

@@ -1,5 +1,5 @@
 /**
- * Cubie level.
+ * Cubie definitions, cubie-cube representation + methods for manipulating it
  */
 
 #ifndef __CUBIE__
@@ -7,11 +7,11 @@
 
 #include <string>
 
-namespace qubie {
+namespace cubie {
 
-  /* All qubie definitions are plain integers to making uniform handling much easier */
+  /* All cubie definitions are plain integers for making uniform handling much easier */
 
-  namespace corner {
+  namespace corner { // definition of corner cubies
     const int COUNT = 8;
 
     const int URF = 0;
@@ -29,7 +29,7 @@ namespace qubie {
   }
   using namespace corner;
 
-  namespace edge {
+  namespace edge { // definition of edge cubies
     const int COUNT = 12;
 
     const int UR = 0;
@@ -53,20 +53,17 @@ namespace qubie {
   using namespace edge;
 
   struct cube {
-    int cperm[corner::COUNT]; // corner qubie permutation
-    int eperm[edge::COUNT]; // edge qubie permutation
-    int cori[corner::COUNT]; // corner qubie orientation; 0 if U/D-facelet on U/D-face; 1 clockwise rot; 2 c-clock
-    int eori[edge::COUNT]; // edge qubie orientation; 0 if U/D-facelet on U/D-face or same for F/B for slice edges
-
-    int fperm[6]; // face permutation
+    int cperm[corner::COUNT]; // corner cubie permutation
+    int eperm[edge::COUNT]; // edge cubie permutation
+    int cori[corner::COUNT]; // corner cubie orientation; 0 if U/D-facelet on U/D-face; 1 clockwise rot; 2 c-clock
+    int eori[edge::COUNT]; // edge cubie orientation; 0 if U/D-facelet on U/D-face or same for F/B for slice edges
   };
 
-  const cube ID_CUBE = {
+  const cube SOLVED_CUBE = {
     {URF, UFL, ULB, UBR, DFR, DLF, DBL, DRB},
     {UR, UF, UL, UB, DR, DF, DL, DB, FR, FL, BL, BR},
-    {}, {},
-    {0, 1, 2, 3, 4, 5}
-  }; // identity cubie-cube, i.e. solved cube with default face ordering
+    {}, {}
+  }; // cubie-cube in solved state
 
   /* Explicitly pass result cube to avoid unnecessary copying during table generation */
 
@@ -77,12 +74,11 @@ namespace qubie {
     void mul(const cube& c1, const cube& c2, cube& into); // multiply only edge cubies
   }
 
-  void mul(const cube& c1, const cube& c2, cube& into, bool tilt = true); // fully multiply two cubes
-  void inv(const cube& c, cube& into, bool tilt = true);
-  void shuffle(cube& c); // generate a uniformly random cube with default face ordering
-  int check(const cube& c, bool tilt = true); // check a cube for being solvable
+  void mul(const cube& c1, const cube& c2, cube& into); // fully multiply two cubes
+  void inv(const cube& c, cube& into); // compute the inverse cube
+  void shuffle(cube& c); // generate a uniformly random cube
+  int check(const cube& c); // check a cube for being solvable
 
-  bool cubie_equal(const cube& c1, const cube& c2); // equality only in terms of cubies
   bool operator==(const cube& c1, const cube& c2);
   bool operator!=(const cube& c1, const cube& c2);
 

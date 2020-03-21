@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "qubie.h"
+#include "cubie.h"
 
 namespace move {
 
@@ -42,7 +42,7 @@ namespace move {
   #endif
 
   extern std::string names[COUNT];
-  extern qubie::cube cubes[COUNT];
+  extern cubie::cube cubes[COUNT];
   extern int inv[COUNT];
 
   extern mask next[COUNT]; // successor moves that should be explored

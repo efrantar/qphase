@@ -82,6 +82,7 @@ namespace qubie {
   void shuffle(cube& c); // generate a uniformly random cube with default face ordering
   int check(const cube& c, bool tilt = true); // check a cube for being solvable
 
+  bool cubie_equal(const cube& c1, const cube& c2); // equality only in terms of cubies
   bool operator==(const cube& c1, const cube& c2);
   bool operator!=(const cube& c1, const cube& c2);
 

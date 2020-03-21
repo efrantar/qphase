@@ -157,6 +157,7 @@ void test_sym() {
   test_conj(sym::conj_udedges2, coord::N_UDEDGES2);
 }
 
+/*
 void test_prun() {
   std::cout << "Testing pruning ..." << std::endl;
 
@@ -204,6 +205,7 @@ void test_prun() {
 
   ok();
 }
+*/
 
 bool check(const qubie::cube &c, const std::vector<int>& sol) {
   qubie::cube c1;

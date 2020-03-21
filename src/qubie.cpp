@@ -143,14 +143,17 @@ namespace qubie {
     std::iota(c.fperm, c.fperm + face::COUNT, 0);
   }
 
-  // TODO: check equality also for tilt (but this causes problems in symmetry setup)
-  bool operator==(const cube& c1, const cube& c2) {
+  bool cubie_equal(const cube& c1, const cube& c2) {
     return
       std::equal(c1.cperm, c1.cperm + corner::COUNT, c2.cperm) &&
       std::equal(c1.eperm, c1.eperm + edge::COUNT, c2.eperm) &&
       std::equal(c1.cori, c1.cori + corner::COUNT, c2.cori) &&
       std::equal(c1.eori, c1.eori + edge::COUNT, c2.eori)
     ;
+  }
+
+  bool operator==(const cube& c1, const cube& c2) {
+    return cubie_equal(c1, c2) && std::equal(c1.fperm, c1.fperm + face::COUNT, c2.fperm);
   }
 
   bool operator!=(const cube& c1, const cube& c2) {

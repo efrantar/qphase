@@ -27,16 +27,16 @@ namespace sym {
   extern int conj_move[move::COUNT][COUNT];
   extern uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
   extern uint16_t conj_udedges2[coord::N_UDEDGES2][COUNT_SUB];
-  extern int conj_tilt[coord::N_TILT][COUNT_SUB];
 
   extern uint32_t fslice1_sym[coord::N_FSLICE1];
   extern uint32_t corners_sym[coord::N_CORNERS];
-  extern int tilt_sym[coord::N_TILT];
   extern uint32_t fslice1_raw[N_FSLICE1];
   extern uint16_t corners_raw[N_CORNERS];
-  extern int tilt_raw[N_TILT];
   extern uint16_t fslice1_selfs[N_FSLICE1];
   extern uint16_t corners_selfs[N_CORNERS];
+
+  extern int tilt_raw[N_TILT];
+  extern int conjsym_tilt[coord::N_TILT][COUNT_SUB];
 
   inline bool eff_inv(int eff) { return eff & 1; }
   inline bool eff_flip(int eff) { return eff & 2; }

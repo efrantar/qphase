@@ -21,22 +21,24 @@ namespace sym {
 
   uint32_t fslice1_sym[coord::N_FSLICE1];
   uint32_t corners_sym[coord::N_CORNERS];
-  int tilt_sym[coord::N_TILT];
   uint32_t fslice1_raw[N_FSLICE1];
   uint16_t corners_raw[N_CORNERS];
-  int tilt_raw[N_TILT];
   uint16_t fslice1_selfs[N_FSLICE1];
   uint16_t corners_selfs[N_CORNERS];
+
+  int tilt_raw[] = {0, 1, 2};
+
 
   void init_base() {
     qubie::cube c = qubie::ID_CUBE;
     qubie::cube tmp;
 
+    // F2 and LR2 symmetries do not change the axes permutation, thus we can ignore their effect on the face-order
     qubie::cube f2 = {
       {DLF, DFR, DRB, DBL, UFL, URF, UBR, ULB},
       {DL, DF, DR, DB, UL, UF, UR, UB, FL, FR, BR, BL},
       {}, {},
-      {D, L, F, U, R, B}
+      {U, R, F, D, L, B}
     };
     qubie::cube u4 = {
       {UBR, URF, UFL, ULB, DRB, DFR, DLF, DBL},
@@ -48,7 +50,7 @@ namespace sym {
       {UFL, URF, UBR, ULB, DLF, DFR, DRB, DBL},
       {UL, UF, UR, UB, DL, DF, DR, DB, FL, FR, BR, BL},
       {3, 3, 3, 3, 3, 3, 3, 3}, {}, // special mirror ori
-      {U, R, F, D, L, B} // do not affect the tilt state
+      {U, R, F, D, L, B}
     };
     qubie::cube urf3 = {
       {URF, DFR, DLF, UFL, UBR, DRB, DBL, ULB},
@@ -79,17 +81,18 @@ namespace sym {
       }
     }
 
-    // TODO: somehow do equality without
+    // We need to ignore the tilt as LR2 cannot affect it properly
     for (int i = 0; i < COUNT; i++) {
       for (int j = 0; j < COUNT; j++) {
-        qubie::mul(cubes[i], cubes[j], c);
-        if (c == qubie::ID_CUBE) {
+        qubie::mul(cubes[i], cubes[j], c, false);
+        if (qubie::cubie_equal(c, qubie::ID_CUBE)) {
           inv[i] = j;
           break;
         }
       }
     }
 
+    // TODO: fix
     for (int m = 0; m < move::COUNT; m++) {
       for (int s = 0; s < COUNT; s++) {
         qubie::mul(cubes[s], move::cubes[m], tmp);

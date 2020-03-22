@@ -8,12 +8,12 @@ namespace state {
 
   using namespace move;
 
-  int summ_cls[N_SUMM];
-  int summ_rep[N_SUMM_SYM];
-  int cored_summ[N_SUMM][sym::COUNT_SUB];
+  int coord_cls[N_COORD];
+  int coord_rep[N_COORD_SYM];
+  int cored_coord[N_COORD][sym::COUNT_SUB];
 
-  int move_summ[N_SUMM][move::COUNT];
-  move::mask moves[N_SUMM_SYM];
+  int move_coord[N_COORD][move::COUNT];
+  move::mask moves[N_COORD_SYM];
 
   const int N_AXPERM = 6;
 
@@ -44,10 +44,10 @@ namespace state {
     {B, L, D, F, R, U}
   };
 
-  std::vector<int> blocked[N_SUMM_SYM] = {
-    {U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3, RUD},
-    {R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3, RRL},
-    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3, RFB}
+  std::vector<int> blocked[N_COORD_SYM] = {
+    {U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3},
+    {R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3},
+    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3}
   };
 
   int axperm_enc[27];
@@ -87,53 +87,53 @@ namespace state {
       }
     }
 
-    std::fill(summ_cls, summ_cls + N_SUMM, -1);
+    std::fill(coord_cls, coord_cls + N_COORD, -1);
     cube c1;
     int cls = 0;
 
-    for (int summ = 0; summ < N_SUMM; summ++) {
-      set_summ(c, summ);
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
 
-      if (summ_cls[summ] != -1)
+      if (coord_cls[coord] != -1)
         continue;
-      summ_cls[summ] = cls;
-      summ_rep[cls] = summ;
+      coord_cls[coord] = cls;
+      coord_rep[cls] = coord;
 
       for (int s = 1; s < sym::COUNT_SUB; s++) {
         // Note that we want to reduce with respect to full cube rotations, not w.r.t. symmetry of the cube itself
         mul(c, sym_cubes[s], c1);
-        int summ1 = get_summ(c1);
-        if (summ_cls[summ1] == -1)
-          summ_cls[summ1] = cls;
+        int coord1 = get_coord(c1);
+        if (coord_cls[coord1] == -1)
+          coord_cls[coord1] = cls;
       }
       cls++;
     }
 
-    for (int summ = 0; summ < N_SUMM; summ++) {
-      set_summ(c, summ);
-      cored_summ[summ][0] = summ_cls[summ];
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
+      cored_coord[coord][0] = coord_cls[coord];
       for (int s = 1; s < sym::COUNT_SUB; s++) {
         // Here we want to conjugate with respect to an actual cube symmetry
         mul(sym_cubes[s], c, tmp);
         mul(tmp, sym_cubes[sym::inv[s]], c1);
-        cored_summ[summ][s] = summ_cls[get_summ(c1)];
+        cored_coord[coord][s] = coord_cls[get_coord(c1)];
       }
     }
 
-    for (int summ = 0; summ < N_SUMM; summ++) {
-      set_summ(c, summ);
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
       for (int m = 0; m < move::COUNT_CUBE; m++)
-        move_summ[summ][m] = summ;
+        move_coord[coord][m] = coord;
       for (int m = move::COUNT_CUBE; m < move::COUNT; m++) {
         mul(c, MOVES[m - move::COUNT_CUBE], c1);
-        move_summ[summ][m] = get_summ(c1);
+        move_coord[coord][m] = get_coord(c1);
       }
     }
 
-    for (int ssumm = 0; ssumm < N_SUMM_SYM; ssumm++) {
-      for (int m : blocked[ssumm])
-        moves[ssumm] |= move::bit(m);
-      moves[ssumm] = ~moves[ssumm];
+    for (int scoord = 0; scoord < N_COORD_SYM; scoord++) {
+      for (int m : blocked[scoord])
+        moves[scoord] |= move::bit(m);
+      moves[scoord] = ~moves[scoord];
     }
   }
 
@@ -151,12 +151,12 @@ namespace state {
     return std::equal(c1.fperm, c1.fperm + face::color::COUNT, c2.fperm);
   }
 
-  int get_summ(const cube& c) {
+  int get_coord(const cube& c) {
     return axperm_enc[9 * (c.fperm[0] % 3) + 3 * (c.fperm[1] % 3) + (c.fperm[2] % 3)];
   }
 
-  void set_summ(cube& c, int summ) {
-    int axperm = axperm_dec[summ];
+  void set_coord(cube& c, int coord) {
+    int axperm = axperm_dec[coord];
     for (int i = 2; i >= 0; i--) {
       c.fperm[i] = axperm % 3;
       c.fperm[i + 3] = c.fperm[i] + 3;

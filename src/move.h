@@ -12,7 +12,7 @@ namespace move {
   using mask = uint64_t;
 
   const int COUNT_CUBE = 45;
-  const int COUNT_STATE = 3;
+  const int COUNT_STATE = 2;
   const int COUNT = COUNT_CUBE + COUNT_STATE;
 
   const int U1 = 0;
@@ -60,9 +60,8 @@ namespace move {
   const int F3B1 = 42;
   const int F3B2 = 43;
   const int F3B3 = 44;
-  const int RUD = 45;
-  const int RRL = 46;
-  const int RFB = 47;
+  const int RRL = 45;
+  const int RFB = 46;
 
   extern cubie::cube cubes[COUNT_CUBE];
 
@@ -73,14 +72,14 @@ namespace move {
     "(R L)", "(R L2)", "(R L')", "(R2 L)", "(R2 L2)", "(R2 L')", "(R' L)", "(R' L2)", "(R' L')",
     "F", "F2", "F'", "B", "B2", "B'",
     "(F B)", "(F B2)", "(F B')", "(F2 B)", "(F2 B2)", "(F2 B')", "(F' B)", "(F' B2)", "(F' B')",
-    "rUD", "rRL", "rFB"
+    "rRL", "rFB"
   };
 
   const int inv[] = {
     U3, U2, U1, D3, D2, D1, U3D3, U3D2, U3D1, U2D3, U2D2, U2D1, U1D3, U1D2, U1D1,
     R3, R2, R1, L3, L2, L1, R3L3, R3L2, R3L1, R2L3, R2L2, R2L1, R1L3, R1L2, R1L1,
     F3, F2, F1, B3, B2, B1, F3B3, F3B2, F3B1, F2B3, F2B2, F2B1, F1B3, F1B2, F1B1,
-    -1, -1, -1 // we don't need inverses for the rotations
+    -1, -1 // we don't need inverses for the rotations
   };
 
   extern mask next[COUNT]; // successor moves that should be explored

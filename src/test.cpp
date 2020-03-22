@@ -228,40 +228,41 @@ bool check(const cubie::cube &c, const std::vector<int>& sol) {
 void test_phase2() {
   std::cout << "Testing phase 2 table ..." << std::endl;
 
-  for (int corners = 0; corners < coord::N_CORNERS; corners++) {
-    for (int udedges2 = 0; udedges2 < coord::N_UDEDGES2; udedges2++) {
-      for (int state = 0; state < state::N_COORD; state++) {
-        int dist = prun::get_phase2(corners, udedges2, state);
-        bool closer = false;
-        bool jump = false;
+  std::srand(0);
+  for (int i = 0; i < 1000; i++) {
+    int corners = std::rand() % coord::N_CORNERS;
+    int udedges2 = std::rand() % coord::N_UDEDGES2;
+    int state = std::rand() % state::N_COORD;
 
-        for (move::mask moves = move::p2mask & state::moves[state::coord_cls[state]]; moves; moves &= moves - 1) {
-          int m = ffsll(moves) - 1;
+    int dist = prun::get_phase2(corners, udedges2, state);
+    bool closer = false;
+    bool jump = false;
 
-          int state1 = state::move_coord[state][m];
-          int corners1;
-          int udedges21;
-          if (m < move::COUNT_CUBE) {
-            corners1 = coord::move_corners[corners][m];
-            udedges21 = coord::move_udedges2[udedges2][m];
-          } else {
-            corners1 = corners;
-            udedges21 = udedges2;
-          }
+    for (move::mask moves = move::p2mask & state::moves[state::coord_cls[state]]; moves; moves &= moves - 1) {
+      int m = ffsll(moves) - 1;
 
-          int delta = prun::get_phase2(corners1, udedges21, state1) - dist;
-          if (delta == -1)
-            closer = true;
-          if (abs(delta) > 1)
-            jump = true;
-        }
-
-        if (jump)
-          error();
-        if (corners != 0 && udedges2 != 0 && !closer)
-          error();
+      int state1 = state::move_coord[state][m];
+      int corners1;
+      int udedges21;
+      if (m < move::COUNT_CUBE) {
+        corners1 = coord::move_corners[corners][m];
+        udedges21 = coord::move_udedges2[udedges2][m];
+      } else {
+        corners1 = corners;
+        udedges21 = udedges2;
       }
+
+      int delta = prun::get_phase2(corners1, udedges21, state1) - dist;
+      if (delta == -1)
+        closer = true;
+      if (abs(delta) > 1)
+        jump = true;
     }
+
+    if (jump)
+      error();
+    if (corners != 0 && udedges2 != 0 && !closer)
+      error();
   }
 
   ok();

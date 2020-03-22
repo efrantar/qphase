@@ -112,34 +112,40 @@ namespace prun {
                 int dist1 = dist + 1;
 
                 int state1 = state::move_coord[state][m];
+                int sstate1;
+                int csym1;
+                int udedges21;
+                int coord1;
                 if (m >= move::COUNT_CUBE) {
-                  int coord1 = (coord - sstate) + state::coord_cls[state1];
-                  if (phase2[coord1] <= dist1)
-                    continue;
-                  phase2[coord1] = dist1;
+                  // Don't forget that we are symmetry reducing w.r.t. CORNERS and thus need to conjugate here
+                  sstate1 = state::cored_coord[state1][sym::coord_s(sym::corners_sym[corners])];
+                  csym1 = csym;
+                  udedges21 = udedges2;
+                  coord1 = (coord - sstate) + sstate1;
                 } else {
                   int corners1 = coord::move_corners[corners][m];
-                  int udedges21 = coord::move_udedges2[udedges2][m];
+                  udedges21 = coord::move_udedges2[udedges2][m];
                   int tmp = sym::corners_sym[corners1];
                   udedges21 = sym::conj_udedges2[udedges21][sym::coord_s(tmp)];
-                  int csym1 = sym::coord_c(tmp);
-                  int sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
-                  int coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + sstate1;
+                  csym1 = sym::coord_c(tmp);
+                  sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
+                  coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + sstate1;
+                }
+                state1 = state::coord_rep[sstate1]; // we need to apply self-symmetries to the conjugated raw state
 
-                  if (phase2[coord1] <= dist1)
-                    continue;
-                  phase2[coord1] = dist1;
-                  coord1 -= state::N_COORD_SYM * udedges21;
+                if (phase2[coord1] <= dist1)
+                  continue;
+                phase2[coord1] = dist1;
+                coord1 -= state::N_COORD_SYM * udedges21 + sstate1;
 
-                  int selfs = sym::corners_selfs[csym1] >> 1;
-                  for (int s = 1; selfs > 0; s++) {
-                    if (selfs & 1) {
-                      int coord2 = coord1 + state::N_COORD_SYM * sym::conj_udedges2[udedges21][s];
-                      if (phase2[coord2] > dist1)
-                        phase2[coord2] = dist1;
-                    }
-                    selfs >>= 1;
+                int selfs = sym::corners_selfs[csym1] >> 1;
+                for (int s = 1; selfs > 0; s++) {
+                  if (selfs & 1) {
+                    int coord2 = coord1 + state::N_COORD_SYM * sym::conj_udedges2[udedges21][s] + state::cored_coord[state1][s];
+                    if (phase2[coord2] > dist1)
+                      phase2[coord2] = dist1;
                   }
+                  selfs >>= 1;
                 }
               }
             }
@@ -207,7 +213,7 @@ namespace prun {
   int get_phase2(int corners, int udedges2, int state) {
     int tmp = sym::corners_sym[corners];
     int cornud = coord::N_UDEDGES2 * sym::coord_c(tmp) + sym::conj_udedges2[udedges2][sym::coord_s(tmp)];
-    return state::N_COORD_SYM * cornud + state::cored_coord[state][sym::coord_s(tmp)];
+    return phase2[state::N_COORD_SYM * cornud + state::cored_coord[state][sym::coord_s(tmp)]];
   }
 
   int get_precheck(int corners, int slice, int state) {

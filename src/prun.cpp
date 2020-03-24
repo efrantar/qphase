@@ -14,13 +14,12 @@ namespace prun {
   uint8_t *precheck;
 
   void init_phase1() {
-    int n_moves = std::bitset<64>(move::p1mask).count(); // make sure not to consider B-moves in F5-mode
-
     phase1 = new uint8_t[N_FS1TWIST];
     std::fill(phase1, phase1 + N_FS1TWIST, EMPTY);
 
+    // Note that SLICE is not 0 at the end of phase 1
     for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
-      int tmp = coord::N_TWIST * sym::coord_c(sym::fslice1_sym[coord::fslice1(0, coord::SLICE1_SOLVED)]);;
+      int tmp = coord::N_TWIST * sym::coord_c(sym::fslice1_sym[coord::fslice1(0, coord::SLICE1_SOLVED)]);
       phase1[state::N_COORD_SYM * tmp + sstate] = 0;
     }
     int count = 0;
@@ -38,43 +37,52 @@ namespace prun {
           for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
             int state = state::coord_rep[sstate];
 
-            if ((phase1[coord] & 0xff) == dist) {
+            if (phase1[coord] == dist) {
               count++;
 
               for (move::mask moves = move::p1mask & state::moves[sstate]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
+                int dist1 = dist + 1;
 
+                int state1 = state::move_coord[state][m];
+                int sstate1;
+                int fs1sym1;
+                int twist1;
+                int coord1;
                 if (m >= move::COUNT_CUBE) {
-                  int state1 = state::move_coord[state][m];
-                  int coord1 = (coord - sstate) + state::coord_cls[state1];
-                  if (phase1[coord1] != EMPTY)
-                    continue;
-                  phase1[coord1] = dist + 1;
+                  // Don't forget that we are symmetry reducing w.r.t. FSLICE1 and thus need to conjugate here
+                  sstate1 = state::cored_coord[state1][sym::coord_s(sym::fslice1_sym[fslice1])];
+                  fs1sym1 = fs1sym;
+                  twist1 = twist;
+                  coord1 = (coord - sstate) + sstate1;
                 } else {
                   int slice11 = coord::slice_to_slice1(coord::move_edges4[slice][m]);
                   int fslice11 = coord::fslice1(coord::move_flip[flip][m], slice11);
                   int tmp = sym::fslice1_sym[fslice11];
-                  int twist1 = sym::conj_twist[coord::move_twist[twist][m]][sym::coord_s(tmp)];
-                  int fs1sym1 = sym::coord_c(tmp);
-                  int sstate1 = state::cored_coord[state][sym::coord_s(tmp)];
-                  int coord1 = state::N_COORD_SYM * (coord::N_TWIST * fs1sym1 + twist1) + sstate1;
+                  twist1 = sym::conj_twist[coord::move_twist[twist][m]][sym::coord_s(tmp)];
+                  fs1sym1 = sym::coord_c(tmp);
+                  sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
+                  coord1 = state::N_COORD_SYM * (coord::N_TWIST * fs1sym1 + twist1) + sstate1;
+                }
+                state1 = state::coord_rep[sstate1]; // we need to apply self-symmetries to the conjugated raw state
 
-                  if (phase1[coord1] == EMPTY)
-                    phase1[coord1] = dist + 1;
-                  coord1 -= state::N_COORD_SYM * twist1; // only TWIST part changes below
+                if (phase1[coord1] <= dist)
+                  continue;
+                phase1[coord1] = dist1;
+                coord1 -= state::N_COORD_SYM * twist1 + sstate1; // only TWIST and SSTATE parts change below
 
-                  int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
-                  for (int s = 1; selfs > 0; s++) { // bit 0 is always on
-                    if (selfs & 1) {
-                      int coord2 = coord1 + state::N_COORD_SYM * sym::conj_twist[twist1][s];
-                      if (phase1[coord2] == EMPTY)
-                        phase1[coord2] = dist + 1;
-                    }
-                    selfs >>= 1;
+                int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
+                for (int s = 1; selfs > 0; s++) { // bit 0 is always on
+                  if (selfs & 1) {
+                    int coord2 = coord1 + state::N_COORD_SYM * sym::conj_twist[twist1][s] + state::cored_coord[state1][s];
+                    if (phase1[coord2] > dist1)
+                      phase1[coord2] = dist1;
                   }
+                  selfs >>= 1;
                 }
               }
             }
+
             coord++;
           }
         }
@@ -117,7 +125,6 @@ namespace prun {
                 int udedges21;
                 int coord1;
                 if (m >= move::COUNT_CUBE) {
-                  // Don't forget that we are symmetry reducing w.r.t. CORNERS and thus need to conjugate here
                   sstate1 = state::cored_coord[state1][sym::coord_s(sym::corners_sym[corners])];
                   csym1 = csym;
                   udedges21 = udedges2;
@@ -131,7 +138,7 @@ namespace prun {
                   sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
                   coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + sstate1;
                 }
-                state1 = state::coord_rep[sstate1]; // we need to apply self-symmetries to the conjugated raw state
+                state1 = state::coord_rep[sstate1];
 
                 if (phase2[coord1] <= dist1)
                   continue;
@@ -210,6 +217,12 @@ namespace prun {
     }
   }
 
+  int get_phase1(int flip, int slice, int twist, int state) {
+    int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
+    int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
+    return phase1[state::N_COORD_SYM * fs1twist + state::cored_coord[state][sym::coord_s(tmp)]];
+  }
+
   int get_phase2(int corners, int udedges2, int state) {
     int tmp = sym::corners_sym[corners];
     int cornud = coord::N_UDEDGES2 * sym::coord_c(tmp) + sym::conj_udedges2[udedges2][sym::coord_s(tmp)];
@@ -223,9 +236,44 @@ namespace prun {
   }
 
   bool init(bool file) {
-    // init_phase1();
-    init_phase2();
-    init_precheck();
+    if (!file) {
+      init_phase1();
+      init_phase2();
+      init_precheck();
+      return true;
+    }
+
+    FILE *f = fopen(SAVE.c_str(), "rb");
+    int err = 0;
+
+    if (f == NULL) {
+      init_phase1();
+      init_phase2();
+      init_precheck();
+
+      f = fopen(SAVE.c_str(), "wb");
+      if (fwrite(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)
+        err = 1;
+      if (fwrite(phase2, sizeof(uint8_t), N_CORNUD2, f) != N_CORNUD2)
+        err = 1;
+      if (fwrite(precheck, sizeof(uint8_t), N_CSLICE2, f) != N_CSLICE2)
+        err = 1;
+      if (err)
+        remove(SAVE.c_str()); // delete file if there was some error writing it
+    } else {
+      phase1 = new uint8_t[N_FS1TWIST];
+      phase2 = new uint8_t[N_CORNUD2];
+      precheck = new uint8_t[N_CSLICE2];
+      if (fread(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)
+        err = 1;
+      if (fread(phase2, sizeof(uint8_t), N_CORNUD2, f) != N_CORNUD2)
+        err = 1;
+      if (fread(precheck, sizeof(uint8_t), N_CSLICE2, f) != N_CSLICE2)
+        err = 1;
+    }
+
+    fclose(f);
+    return err;
   }
 
 }

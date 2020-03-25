@@ -135,6 +135,22 @@ namespace state {
         moves[scoord] |= move::bit(m);
       moves[scoord] = ~moves[scoord];
     }
+
+    for (int m = 0; m < move::COUNT_STATE; m++) {
+      for (int s = 0; s < sym::COUNT; s++) {
+        mul(sym_cubes[s], MOVES[m], tmp);
+        mul(tmp, sym_cubes[sym::inv[s]], c);
+        for (int conj = 0; conj < move::COUNT_STATE; conj++) {
+          if (c == MOVES[conj])
+            conj_move[m][s] = conj;
+        }
+      }
+    }
+
+    for (int s = 0; s < sym::COUNT_SUB; s++) {
+      for (int m = 0; m < move::COUNT_STATE; m++)
+        eff_mperm[s][m] = conj_move[m][sym::inv[s]];
+    }
   }
 
   void mul(const cube& c1, const cube& c2, cube& into) {

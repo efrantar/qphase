@@ -9,12 +9,15 @@ namespace prun {
   const std::string SAVE = "twophase.tbl";
   const int EMPTY = 0xff;
 
-  uint8_t *phase1;
+  uint64_t *phase1;
   uint8_t *phase2;
   uint8_t *precheck;
 
+  // Used to remap symmetry ext. phase 1 table entries back to actual situation
+  move::mask remap[2][16][1 << 16];
+
   void init_phase1() {
-    phase1 = new uint8_t[N_FS1TWIST];
+    phase1 = new uint64_t[N_FS1TWIST];
     std::fill(phase1, phase1 + N_FS1TWIST, EMPTY);
 
     // Note that SLICE is not 0 at the end of phase 1
@@ -39,6 +42,7 @@ namespace prun {
 
             if (phase1[coord] == dist) {
               count++;
+              int deltas[move::COUNT];
 
               for (move::mask moves = move::p1mask & state::moves[sstate]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
@@ -66,21 +70,48 @@ namespace prun {
                 }
                 state1 = state::coord_rep[sstate1]; // we need to apply self-symmetries to the conjugated raw state
 
-                if (phase1[coord1] <= dist)
+                if (phase1[coord1] != EMPTY) {
+                  deltas[m] = phase1[coord] - dist;
                   continue;
+                }
                 phase1[coord1] = dist1;
+                deltas[m] = 1;
                 coord1 -= state::N_COORD_SYM * twist1 + sstate1; // only TWIST and SSTATE parts change below
 
                 int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
                 for (int s = 1; selfs > 0; s++) { // bit 0 is always on
                   if (selfs & 1) {
                     int coord2 = coord1 + state::N_COORD_SYM * sym::conj_twist[twist1][s] + state::cored_coord[state1][s];
-                    if (phase1[coord2] > dist1)
+                    if (phase1[coord2] == EMPTY)
                       phase1[coord2] = dist1;
                   }
                   selfs >>= 1;
                 }
               }
+
+              /* Encode from left to right to preserve indexing of moves */
+              uint64_t prun = 0;
+
+              for (int m = move::COUNT - 1; m >= move::COUNT_CUBE; m--)
+                prun = (prun << 2) | (deltas[m] + 1);
+              for (int ax = 30; ax >= 0; ax -= 15) {
+                bool away = false;
+                for (int i = ax; i < ax + 15; i++) {
+                  if (deltas[i] != 0) {
+                    away = deltas[i] > 0;
+                    break; // stop immediately once we found a value != 0
+                  }
+                }
+
+                int tmp = 0;
+                for (int i = (ax + 15) - 1; i >= ax; i--)
+                  tmp = (tmp | (deltas[i] + ~away)) << 1;
+                tmp |= away;
+
+                prun = (prun << 16) | tmp;
+              }
+
+              phase1[coord] |= prun << 8;
             }
 
             coord++;
@@ -261,7 +292,7 @@ namespace prun {
       if (err)
         remove(SAVE.c_str()); // delete file if there was some error writing it
     } else {
-      phase1 = new uint8_t[N_FS1TWIST];
+      phase1 = new uint64_t[N_FS1TWIST];
       phase2 = new uint8_t[N_CORNUD2];
       precheck = new uint8_t[N_CSLICE2];
       if (fread(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)

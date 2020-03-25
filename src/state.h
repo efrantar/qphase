@@ -30,8 +30,10 @@ namespace state {
   extern int coord_rep[N_COORD_SYM];
   extern int cored_coord[N_COORD][sym::COUNT_SUB];
 
-  extern int move_coord[N_COORD][move::COUNT];
   extern move::mask moves[N_COORD_SYM];
+  extern int conj_move[move::COUNT_STATE][sym::COUNT];
+  extern int eff_mperm[sym::COUNT_SUB][move::COUNT_STATE];
+  extern int move_coord[N_COORD][move::COUNT];
 
   void mul(const cube& c1, const cube& c2, cube& into);
   void inv(const cube& c, cube& into);

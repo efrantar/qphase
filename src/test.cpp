@@ -328,9 +328,9 @@ void test_precheck() {
 
     int dist = prun::get_precheck(corners, slice, state);
     bool closer = false; // whether there exists at least one move that gets us closer to the goal
-    bool jump = false; // whether any move changes the distance by a magnitude larger than 1
+    bool jump = false; // whether any move decreases the distance to goal by more than 1
 
-    for (move::mask moves = move::p2mask & state::moves[state::coord_cls[state]]; moves; moves &= moves - 1) {
+    for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
       int state1 = state::move_coord[state][m];
@@ -347,7 +347,7 @@ void test_precheck() {
       int delta = prun::get_precheck(corners1, slice1, state1) - dist;
       if (delta == -1)
         closer = true;
-      if (abs(delta) > 1)
+      if (delta < -1) // due to how we encode the grip state, there may be deltas > 1 in the table
         jump = true;
     }
 
@@ -356,6 +356,42 @@ void test_precheck() {
     if ((corners != 0 || slice2 != 0) && !closer)
       error();
   }
+
+  ok();
+}
+
+void test_state() {
+  // `coord_cls` must have exactly 15 ids that each occur exactly twice
+  int count[15];
+  std::fill(count, count + 15, 0);
+  for (int i = 0; i < state::N_COORD; i++) {
+    if (state::coord_cls[i] >= 15) {
+      error();
+      return;
+    }
+    count[state::coord_cls[i]]++;
+  }
+  for (int i = 0; i < 15; i++) {
+    if (count[i] != 2)
+      error();
+  }
+
+  // `coord_rep` must be consistent with `coord_cls`
+  for (int i = 0; i < state::N_COORD_SYM; i++) {
+    if (state::coord_cls[state::coord_rep[i]] != i)
+      error();
+  }
+
+  // TODO: this might be BS
+  /*
+  for (int coord = 0; coord < state::N_COORD; coord++) {
+    for (int m = 0; m < move::COUNT; m++) {
+      int tmp = state::coord_cls[state::move_coord[state::coord_rep[state::coord_cls[coord]]][m]];
+      if (state::coord_cls[state::move_coord[coord][m]] != tmp)
+        error();
+    }
+  }
+  */
 
   ok();
 }
@@ -373,10 +409,11 @@ int main() {
   // test_coord();
   // test_move();
   // test_sym();
+  // test_state();
   // test_prun();
 
-  test_phase1();
-  test_phase2();
+  // test_phase1();
+  // test_phase2();
   test_precheck();
 
   return 0;

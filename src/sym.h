@@ -20,8 +20,8 @@ namespace sym {
 
   extern cubie::cube cubes[COUNT];
   extern int inv[COUNT];
-  extern int effect[COUNT][3];
-  extern int eff_perm[4][15];
+  extern int effect[COUNT_SUB][3];
+  extern int eff_mperm[4][15];
 
   extern int conj_move[move::COUNT_CUBE][COUNT];
   extern uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
@@ -34,9 +34,8 @@ namespace sym {
   extern uint16_t fslice1_selfs[N_FSLICE1];
   extern uint16_t corners_selfs[N_CORNERS];
 
-  inline bool eff_inv(int eff) { return eff & 1; }
-  inline bool eff_flip(int eff) { return eff & 2; }
   inline int eff_shift(int eff) { return eff >> 2; }
+  inline int eff_nshift(int eff) { return eff & 0x3; }
   inline int coord_c(int coord) { return coord / COUNT_SUB; }
   inline int coord_s(int coord) { return coord % COUNT_SUB; }
 

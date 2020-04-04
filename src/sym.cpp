@@ -10,8 +10,8 @@ namespace sym {
 
   cubie::cube cubes[COUNT];
   int inv[COUNT];
-  int effect[COUNT][3];
-  int eff_perm[4][15];
+  int effect[COUNT_SUB][3];
+  int eff_mperm[4][15];
 
   int conj_move[move::COUNT_CUBE][COUNT];
   uint16_t conj_twist[coord::N_TWIST][COUNT_SUB];
@@ -101,7 +101,7 @@ namespace sym {
       {R1, R3, L1, L3},
       {F1, F3, F1, F3}
     };
-    for (int s = 0; s < COUNT; s++) {
+    for (int s = 0; s < COUNT_SUB; s++) {
       for (int ax = 0; ax < 3; ax++) {
         int m = conj_move[moves[ax][0]][inv[s]];
         for (int ax1 = 0; ax1 < 3; ax1++) {
@@ -119,7 +119,7 @@ namespace sym {
     // First 4 symmetries have effects 0, 1, 2, 3 on the UD axis respectively
     for (int s = 0; s < 4; s++) {
       for (int m = 0; m < 15; m++)
-        eff_perm[s][m] = conj_move[m][inv[s]];
+        eff_mperm[s][m] = conj_move[m][inv[s]];
     }
   }
 

@@ -9,15 +9,48 @@ namespace prun {
   const std::string SAVE = "twophase.tbl";
   const int EMPTY = 0xff;
 
-  uint64_t *phase1;
+  uint8_t *phase1;
   uint8_t *phase2;
   uint8_t *precheck;
 
   // Used to remap symmetry ext. phase 1 table entries back to actual situation
-  move::mask remap[2][16][1 << 16];
+  move::mask remap[2][12][1 << 16];
+  move::mask remap_state[2][12][1 << 8];
+
+  int permute(int mask, int *perm, int len, int step) {
+    int applied = 0;
+    for (int i = 0; i < len; i++)
+      applied |= ((mask >> perm[i]) & ((1 << step) - 1)) << step * i;
+    return applied;
+  }
+
+  void init_base() {
+    for (int eff = 0; eff < 12; eff++) {
+      for (int enc = 0; enc < 1 << 16; enc++) {
+        int tmp = permute(enc >> 1, sym::eff_mperm[sym::eff_nshift(eff)], 15, 1);
+        remap[0][eff][enc] = move::mask(enc & 1 ? 0 : ~tmp & 0x7fff) << 15 * sym::eff_shift(eff);
+        remap[1][eff][enc] = move::mask(enc & 1 ? ~tmp & 0x7fff : 0x7fff) << 15 * sym::eff_shift(eff);
+      }
+    }
+
+    for (int eff = 0; eff < 12; eff++) {
+      for (int enc = 0; enc < 1 << 8; enc++) {
+        int tmp = permute(enc, state::eff_mperm[sym::eff_nshift(eff)], move::COUNT_STATE, 2);
+
+        for (int delta : {0, 1}) {
+          remap_state[delta][eff][enc] = 0;
+          for (int i = move::COUNT_STATE; i >= 0; i--) {
+            remap_state[delta][eff][enc] <<= 1;
+            remap_state[delta][eff][enc] |= ((tmp >> 2 * i) & 0x3) <= delta;
+          }
+          remap_state[delta][eff][enc] <<= move::COUNT_CUBE;
+        }
+      }
+    }
+  }
 
   void init_phase1() {
-    phase1 = new uint64_t[N_FS1TWIST];
+    phase1 = new uint8_t[N_FS1TWIST];
     std::fill(phase1, phase1 + N_FS1TWIST, EMPTY);
 
     // Note that SLICE is not 0 at the end of phase 1
@@ -89,6 +122,7 @@ namespace prun {
                 }
               }
 
+#ifdef FALSE
               /* Encode from left to right to preserve indexing of moves */
               uint64_t prun = 0;
 
@@ -112,6 +146,7 @@ namespace prun {
               }
 
               phase1[coord] |= prun << 8;
+#endif
             }
 
             coord++;
@@ -204,8 +239,8 @@ namespace prun {
 
     for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++)
       precheck[sstate] = 0;
-    int dist = 0;
-    int count = 0;
+    int dist = 1;
+    int count = state::N_COORD_SYM;
 
     while (count < N_CSLICE2) {
       int coord = 0;
@@ -217,25 +252,25 @@ namespace prun {
           for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
             int state = state::coord_rep[sstate];
 
-            if (precheck[coord] == dist) {
-              count++;
-
-              for (move::mask moves = move::p2mask & state::moves[sstate]; moves; moves &= moves - 1) {
+            if (precheck[coord] == EMPTY) {
+              for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
 
                 int coord1;
-                int state1 = state::move_coord[state][m];
+                int sstate1 = state::coord_cls[state::move_coord[state][m]];
                 if (m >= move::COUNT_CUBE)
-                  coord1 = (coord - sstate) + state::coord_cls[state1];
+                  coord1 = (coord - sstate) + sstate1;
                 else {
                   int corners1 = coord::move_corners[corners][m];
                   int slice21 = coord::slice_to_slice2(coord::move_edges4[slice][m]);
-                  coord1 = state::N_COORD_SYM * (coord::N_SLICE2 * corners1 + slice21) + state::coord_cls[state1];
+                  coord1 = state::N_COORD_SYM * (coord::N_SLICE2 * corners1 + slice21) + sstate1;
                 }
 
-                if (precheck[coord1] > dist1)
-                  precheck[coord1] = dist1;
+                if (precheck[coord1] == dist - 1) {
+                  precheck[coord] = dist;
+                  count++;
+                  break;
+                }
               }
             }
             coord++;
@@ -267,6 +302,12 @@ namespace prun {
   }
 
   bool init(bool file) {
+    init_precheck();
+  }
+
+  bool init1(bool file) {
+    init_base();
+
     if (!file) {
       init_phase1();
       init_phase2();
@@ -292,7 +333,7 @@ namespace prun {
       if (err)
         remove(SAVE.c_str()); // delete file if there was some error writing it
     } else {
-      phase1 = new uint64_t[N_FS1TWIST];
+      phase1 = new uint8_t[N_FS1TWIST];
       phase2 = new uint8_t[N_CORNUD2];
       precheck = new uint8_t[N_CSLICE2];
       if (fread(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)

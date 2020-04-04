@@ -17,7 +17,7 @@ namespace prun {
   const int N_CORNUD2 = sym::N_CORNERS * coord::N_UDEDGES2 * state::N_COORD_SYM;
   const int N_CSLICE2 = coord::N_CORNERS * coord::N_SLICE2 * state::N_COORD_SYM;
 
-  extern uint64_t *phase1;
+  extern uint8_t *phase1;
   extern uint8_t *phase2;
   extern uint8_t *precheck;
 

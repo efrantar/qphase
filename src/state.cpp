@@ -12,11 +12,21 @@ namespace state {
   int coord_rep[N_COORD_SYM];
   int cored_coord[N_COORD][sym::COUNT_SUB];
 
+  move::mask moves[N_COORD];
+  int conj_move[move::COUNT_STATE][sym::COUNT];
+  int eff_mperm[sym::COUNT_SUB][move::COUNT_STATE];
   int move_coord[N_COORD][move::COUNT];
-  move::mask moves[N_COORD_SYM];
 
-  const int N_AXPERM = 6;
+  // Multiply gripper states
+  const int G_MUL[6][6] = {
+    {G_NEUTRAL,    G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_BLOCKED_FB},
+    {G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_FB, G_PARTIAL_RL, G_BLOCKED_FB},
+    {G_PARTIAL_FB, G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_PARTIAL_FB},
+    {G_BLOCKED_RL, G_PARTIAL_RL, -1,           G_NEUTRAL,    -1          },
+    {G_BLOCKED_FB, -1,           G_PARTIAL_FB, -1,           G_NEUTRAL   }
+  };
 
+  // All legal face permutations
   const int FPERMS[][6] = {
     {U, R, F, D, L, B},
     {U, B, R, D, F, L},
@@ -44,20 +54,112 @@ namespace state {
     {B, L, D, F, R, U}
   };
 
-  std::vector<int> blocked[N_COORD_SYM] = {
-    {U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3},
-    {R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3},
-    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3}
-  };
+  // Flip grip axis
+  const int G_FLIP[] = {G_NEUTRAL, G_PARTIAL_FB, G_PARTIAL_RL, G_BLOCKED_FB, G_BLOCKED_RL};
 
-  int axperm_enc[27];
-  int axperm_dec[N_AXPERM];
-
+  // Cubes representing the face permutation of cube symmetries
   cube sym_cubes[sym::COUNT];
 
+  // Effect of moves on grip (for RL-axis); note that a half-turn can always be executed in partial manner
+  const int GMOVES[] = {
+    G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL,
+    G_BLOCKED_RL, G_PARTIAL_RL, G_BLOCKED_RL, G_PARTIAL_RL, G_NEUTRAL, G_PARTIAL_RL, G_BLOCKED_RL, G_PARTIAL_RL, G_BLOCKED_RL
+  };
+
   void init() {
+    cube c = ID_CUBE;
+    cube c1;
+    cube tmp;
+
+    // The symmetry class w.r.t. the robot is defined by the axis in the UD-slot and the gripper state if the other
+    // two axes are in order or the axis-flipped gripper state if they are not.
+
+    for (int coord = N_COORD - 1; coord >= 0; coord--) { // the rep should always be the smallest value
+      set_coord(c, coord);
+      coord_cls[coord] = N_GRIP * (c.fperm[0] % 3) + ((c.fperm[1] % 3 > c.fperm[2] % 3) ? G_FLIP[c.gstate] : c.gstate);
+      coord_rep[coord_cls[coord]] = coord;
+    }
+
+    // The cube symmetries which affect the permutation of the axes, the grip is handled explicitly during conjugation
+    cube u4 = {
+      {U, B, R, D, F, L}, G_NEUTRAL
+    };
+    cube urf3 = {
+      {F, U, R, B, D, L}, G_NEUTRAL
+    };
+
+    c = ID_CUBE;
+    for (int i = 0; i < sym::COUNT; i++) {
+      sym_cubes[i] = c;
+
+      if (i % 4 == 3) {
+        mul(c, u4, tmp);
+        std::swap(tmp, c);
+      }
+      if (i % 16 == 15) {
+        mul(c, urf3, tmp);
+        std::swap(tmp, c);
+      }
+    }
+
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
+      cored_coord[coord][0] = coord_cls[coord];
+      for (int s = 1; s < sym::COUNT_SUB; s++) {
+        // Here we want to conjugate w.r.t. to the cube symmetry, i.e. inversely permute the axes in the reference
+        // frame of the robot (and then correct the grip accordingly)
+        mul(sym_cubes[s], c, tmp);
+        mul(tmp, sym_cubes[sym::inv[s]], c1);
+
+        // Only symmetries 4 - 7 and 12 - 15 flip the grip exactly if the UD-axis is aligned
+        if (c1.fperm[0] % 3 == 0 && s % 8 >= 4)
+          c1.gstate = G_FLIP[c1.gstate];
+
+        cored_coord[coord][s] = coord_cls[get_coord(c1)];
+      }
+    }
+
+    std::fill(moves, moves + N_COORD, 0);
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
+      if (c.gstate == G_BLOCKED_RL) // if we are blocked we can only move that axis
+        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[1] % 3)) | (move::mask(0b0101) << move::COUNT_CUBE);
+      else if (c.gstate == G_BLOCKED_FB)
+        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[2] % 3)) | (move::mask(0b1010) << move::COUNT_CUBE);
+      else {
+        moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
+        moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
+        moves[coord] |= move::mask(0xf) << move::COUNT_CUBE;
+      }
+    }
+
+    for (int coord = 0; coord < N_COORD; coord++) {
+      set_coord(c, coord);
+
+      c1 = c;
+      for (int m = 0; m < move::COUNT_CUBE; m++) {
+        if (move::in(m, moves[coord_cls[coord]])) {
+          for (int ax = 1; ax < 3; ax++) {
+            if (c.fperm[ax] % 3 == m / 15) { // figure out where axis is located
+              c1.gstate = G_MUL[c.gstate][GMOVES[m % 15] != G_NEUTRAL ? GMOVES[m % 15] + (ax - 1) : G_NEUTRAL];
+              move_coord[coord][m] = get_coord(c1);
+            }
+          }
+        } else
+          move_coord[coord][m] = -1;
+      }
+      for (int m = move::COUNT_CUBE; m < move::COUNT; m++) {
+        mul(c, MOVES[m - move::COUNT_CUBE], c1);
+        move_coord[coord][m] = get_coord(c1);
+      }
+    }
+
+  }
+
+  /*
+  void init1() {
     int perm[] = {0, 1, 2};
-    for (int i = 0; i < N_AXPERM; i++) {
+    for (int i = 0; i < N_TILT; i++) {
       int tmp = 9 * perm[0] + 3 * perm[1] + perm[2];
       axperm_enc[tmp] = i;
       axperm_dec[i] = tmp;
@@ -68,17 +170,19 @@ namespace state {
     cube tmp;
 
     cube u4 = {
-      {U, B, R, D, F, L}
+      {U, B, R, D, F, L}, G_FLIP
     };
     cube urf3 = {
-      {F, U, R, B, D, L}
+      {F, U, R, B, D, L}, G_NEUTRAL // this symmetry is only legal for neutral grip anyways
     };
+    // The other symmetries do not affect the face permutation
 
     for (int i = 0; i < sym::COUNT; i++) {
       sym_cubes[i] = c;
 
       if (i % 4 == 3) {
         mul(c, u4, tmp);
+        tmp.gstate = tmp.gstate == G_FLIP ? G_NEUTRAL : G_FLIP; // normal mul defined for symmetry reduction
         std::swap(tmp, c);
       }
       if (i % 16 == 15) {
@@ -116,24 +220,48 @@ namespace state {
         // Here we want to conjugate with respect to an actual cube symmetry
         mul(sym_cubes[s], c, tmp);
         mul(tmp, sym_cubes[sym::inv[s]], c1);
+
+        // A conjugation can only flip the grip if the UD-axis is aligned
+        if (c1.fperm[0] % 3 == 0)
+          c1.gstate = G_MUL[c1.gstate][sym_cubes[s].gstate];
+
         cored_coord[coord][s] = coord_cls[get_coord(c1)];
       }
     }
 
     for (int coord = 0; coord < N_COORD; coord++) {
       set_coord(c, coord);
-      for (int m = 0; m < move::COUNT_CUBE; m++)
-        move_coord[coord][m] = coord;
+
+      c1 = c;
+      for (int m = 0; m < move::COUNT_CUBE; m++) {
+        for (int i = 0; i < 3; i++) {
+          if (c.fperm[i] % 3 == m / 15) { // figure out where axis is located
+            if (i > 0) {
+              c1.gstate = G_MUL[c.gstate][GMOVES[m % 15] + (i - 1)];
+              move_coord[coord][m] = get_coord(c1);
+            }
+            break;
+          }
+        }
+      }
       for (int m = move::COUNT_CUBE; m < move::COUNT; m++) {
         mul(c, MOVES[m - move::COUNT_CUBE], c1);
         move_coord[coord][m] = get_coord(c1);
       }
     }
 
+    std::fill(moves, moves + N_COORD_SYM, 0);
     for (int scoord = 0; scoord < N_COORD_SYM; scoord++) {
-      for (int m : blocked[scoord])
-        moves[scoord] |= move::bit(m);
-      moves[scoord] = ~moves[scoord];
+      set_coord(c, coord_rep[scoord]);
+      if (c.gstate == G_BLOCKED_RL) // if we are blocked we can only move this axis
+        moves[scoord] = (move::mask(0x7fff) << 15 * (c.fperm[1] % 3)) | (move::mask(0b0101) << move::COUNT_CUBE);
+      else if (c.gstate == G_BLOCKED_FB)
+        moves[scoord] = (move::mask(0x7fff) << 15 * (c.fperm[2] % 3)) | (move::mask(0b1010) << move::COUNT_CUBE);
+      else {
+        moves[scoord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
+        moves[scoord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
+        moves[scoord] |= move::mask(0xf) << move::COUNT_CUBE;
+      }
     }
 
     for (int m = 0; m < move::COUNT_STATE; m++) {
@@ -152,15 +280,12 @@ namespace state {
         eff_mperm[s][m] = conj_move[m][sym::inv[s]];
     }
   }
+  */
 
   void mul(const cube& c1, const cube& c2, cube& into) {
     for (int i = 0; i < face::color::COUNT; i++)
       into.fperm[i] = c1.fperm[c2.fperm[i]];
-  }
-
-  void inv(const cube& c, cube& into) {
-    for (int face = 0; face < face::color::COUNT; face++)
-      into.fperm[c.fperm[face]] = face;
+    into.gstate = G_MUL[c1.gstate][c2.gstate];
   }
 
   bool operator==(const cube& c1, const cube& c2) {
@@ -168,28 +293,16 @@ namespace state {
   }
 
   int get_coord(const cube& c) {
-    return axperm_enc[9 * (c.fperm[0] % 3) + 3 * (c.fperm[1] % 3) + (c.fperm[2] % 3)];
-  }
-
-  void set_coord(cube& c, int coord) {
-    int axperm = axperm_dec[coord];
-    for (int i = 2; i >= 0; i--) {
-      c.fperm[i] = axperm % 3;
-      c.fperm[i + 3] = c.fperm[i] + 3;
-      axperm /= 3;
-    }
-  }
-
-  int get_tilt(const cube& c) {
-    for (int i = 0; i < N_TILT; i++) {
-      if (std::equal(c.fperm, c.fperm + face::color::COUNT, FPERMS[i]))
-        return i;
+    for (int tilt = 0; tilt < N_TILT; tilt++) {
+      if (std::equal(c.fperm, c.fperm + face::color::COUNT, FPERMS[tilt]))
+        return N_GRIP * tilt + c.gstate;
     }
     return -1;
   }
 
-  void set_tilt(cube& c, int tilt) {
-    std::copy(FPERMS[tilt], FPERMS[tilt] + face::color::COUNT, c.fperm);
+  void set_coord(cube& c, int coord) {
+    std::copy(FPERMS[coord / N_GRIP], FPERMS[coord / N_GRIP] + face::color::COUNT, c.fperm);
+    c.gstate = coord % N_GRIP;
   }
 
 }

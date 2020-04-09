@@ -82,10 +82,10 @@ namespace state {
 
     // The cube symmetries which affect the permutation of the axes, the grip is handled explicitly during conjugation
     cube u4 = {
-      {U, B, R, D, F, L}, G_NEUTRAL
+      {U, F, L, D, B, R}, G_NEUTRAL // TODO: {U, B, R, D, F, L}, G_NEUTRAL
     };
     cube urf3 = {
-      {F, U, R, B, D, L}, G_NEUTRAL
+      {F, U, R, B, D, L}, G_NEUTRAL // TODO
     };
 
     c = ID_CUBE;
@@ -106,14 +106,20 @@ namespace state {
       set_coord(c, coord);
       cored_coord[coord][0] = coord_cls[coord];
       for (int s = 1; s < sym::COUNT_SUB; s++) {
-        // Here we want to conjugate w.r.t. to the cube symmetry, i.e. inversely permute the axes in the reference
-        // frame of the robot (and then correct the grip accordingly)
-        mul(sym_cubes[s], c, tmp);
-        mul(tmp, sym_cubes[sym::inv[s]], c1);
+        // Here we want to conjugate w.r.t. to the cube symmetry, i.e. permute the axes in the reference frame of the
+        // robot (and then correct the grip accordingly)
+        for (int i = 0; i < face::color::COUNT; i++) {
+          for (int j = 0; j < face::color::COUNT; j++) {
+            if (c.fperm[j] == i)
+              c1.fperm[j] = sym_cubes[s].fperm[i];
+          }
+        }
+        c1.gstate = c.gstate;
 
         // Only symmetries 4 - 7 and 12 - 15 flip the grip exactly if the UD-axis is aligned
-        if (c1.fperm[0] % 3 == 0 && s % 8 >= 4)
-          c1.gstate = G_FLIP[c1.gstate];
+        // if (c.fperm[0] % 3 == 0 && s % 8 >= 4)
+        //  c1.gstate = G_FLIP[c.gstate];
+        // TODO
 
         cored_coord[coord][s] = coord_cls[get_coord(c1)];
       }
@@ -138,7 +144,7 @@ namespace state {
 
       c1 = c;
       for (int m = 0; m < move::COUNT_CUBE; m++) {
-        if (move::in(m, moves[coord_cls[coord]])) {
+        if (move::in(m, moves[coord])) {
           for (int ax = 1; ax < 3; ax++) {
             if (c.fperm[ax] % 3 == m / 15) { // figure out where axis is located
               c1.gstate = G_MUL[c.gstate][GMOVES[m % 15] != G_NEUTRAL ? GMOVES[m % 15] + (ax - 1) : G_NEUTRAL];

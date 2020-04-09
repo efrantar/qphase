@@ -285,7 +285,10 @@ void test_phase2() {
     bool closer = false;
     bool jump = false;
 
-    for (move::mask moves = move::p2mask & state::moves[state::coord_cls[state]]; moves; moves &= moves - 1) {
+    if (dist == 0xff)
+      continue;
+
+    for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
       int state1 = state::move_coord[state][m];
@@ -299,10 +302,13 @@ void test_phase2() {
         udedges21 = udedges2;
       }
 
+      if (corners1 == 40319 && udedges21 == 13490 && state1 == 4)
+        std::cout << "Test\n";
+
       int delta = prun::get_phase2(corners1, udedges21, state1) - dist;
       if (delta == -1)
         closer = true;
-      if (abs(delta) > 1)
+      if (delta < -1)
         jump = true;
     }
 
@@ -360,42 +366,6 @@ void test_precheck() {
   ok();
 }
 
-void test_state() {
-  // `coord_cls` must have exactly 15 ids that each occur exactly twice
-  int count[15];
-  std::fill(count, count + 15, 0);
-  for (int i = 0; i < state::N_COORD; i++) {
-    if (state::coord_cls[i] >= 15) {
-      error();
-      return;
-    }
-    count[state::coord_cls[i]]++;
-  }
-  for (int i = 0; i < 15; i++) {
-    if (count[i] != 2)
-      error();
-  }
-
-  // `coord_rep` must be consistent with `coord_cls`
-  for (int i = 0; i < state::N_COORD_SYM; i++) {
-    if (state::coord_cls[state::coord_rep[i]] != i)
-      error();
-  }
-
-  // TODO: this might be BS
-  /*
-  for (int coord = 0; coord < state::N_COORD; coord++) {
-    for (int m = 0; m < move::COUNT; m++) {
-      int tmp = state::coord_cls[state::move_coord[state::coord_rep[state::coord_cls[coord]]][m]];
-      if (state::coord_cls[state::move_coord[coord][m]] != tmp)
-        error();
-    }
-  }
-  */
-
-  ok();
-}
-
 int main() {
   auto tick = std::chrono::high_resolution_clock::now();
   move::init();
@@ -405,16 +375,25 @@ int main() {
   prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
 
+  cubie::cube c1 = cubie::SOLVED_CUBE;
+  cubie::cube c2 = cubie::SOLVED_CUBE;
+  coord::set_udedges2(c1, 11594);
+  coord::set_udedges2(c2, 12002);
+
+  cubie::cube tmp;
+  cubie::cube c3;
+  cubie::edge::mul(sym::cubes[6], c2, tmp);
+  cubie::edge::mul(tmp, sym::cubes[sym::inv[6]], c3);
+  std::cout << coord::get_udedges2(c3) << " " << sym::conj_udedges2[12002][6] << "\n";
+
   // test_cubie();
   // test_coord();
   // test_move();
   // test_sym();
-  // test_state();
   // test_prun();
 
-  // test_phase1();
-  // test_phase2();
-  test_precheck();
+  test_phase2();
+  // test_precheck();
 
   return 0;
 }

@@ -6,6 +6,8 @@
 
 namespace prun {
 
+  using namespace state;
+
   const std::string SAVE = "twophase.tbl";
   const int EMPTY = 0xff;
 
@@ -160,13 +162,67 @@ namespace prun {
   }
 
   void init_phase2() {
+    // We use this small to table to dramatically speed up the backsearching for the actual phase 2 table generation
+    int n_edgecheck = coord::N_UDEDGES2 * state::N_COORD_SYM;
+    uint8_t edgecheck[n_edgecheck];
+    std::fill(edgecheck, edgecheck + n_edgecheck, EMPTY);
+
+    for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++)
+      edgecheck[sstate] = 0;
+    int dist = 1;
+    int count = state::N_COORD_SYM;
+
+    while (count < n_edgecheck) {
+      int coord = 0;
+
+      for (int udedges2 = 0; udedges2 < coord::N_UDEDGES2; udedges2++) {
+        for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
+          int state = state::coord_rep[sstate];
+
+          if (edgecheck[coord] == EMPTY) {
+            for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
+              int m = ffsll(moves) - 1;
+
+              int coord1;
+              int sstate1 = state::coord_cls[state::move_coord[state][m]];
+              if (m >= move::COUNT_CUBE)
+                coord1 = (coord - sstate) + sstate1;
+              else {
+                int udedges21 = coord::move_udedges2[udedges2][m];
+                coord1 = state::N_COORD_SYM * udedges21 + sstate1;
+              }
+
+              if (edgecheck[coord1] == dist - 1) {
+                if (udedges2 == 12002 && sstate == 14)
+                  std::cout << "Test\n";
+                edgecheck[coord] = dist;
+                count++;
+                break;
+              }
+            }
+          }
+          coord++;
+        }
+      }
+
+      std::cout << dist << " " << count << std::endl;
+      dist++;
+    }
+
+    for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
+      std::cout << int(edgecheck[state::N_COORD_SYM * 13490 + sstate]);
+      std::cout << " " << int(edgecheck[state::N_COORD_SYM * 26554 + sstate]);
+      std::cout << " " << int(edgecheck[state::N_COORD_SYM * 13490 + state::cored_coord[state::coord_rep[sstate]][4]]);
+      std::cout << " " << state::cored_coord[state::coord_rep[sstate]][4] << "\n";
+    }
+
     phase2 = new uint8_t[N_CORNUD2];
     std::fill(phase2, phase2 + N_CORNUD2, EMPTY);
 
     for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++)
       phase2[sstate] = 0;
-    int count = 0;
-    int dist = 0;
+    dist = 1;
+    count = state::N_COORD_SYM;
 
     while (count < N_CORNUD2) {
       int coord = 0;
@@ -174,56 +230,40 @@ namespace prun {
       for (int csym = 0; csym < sym::N_CORNERS; csym++) {
         int corners = sym::corners_raw[csym];
 
+        int check = 0;
         for (int udedges2 = 0; udedges2 < coord::N_UDEDGES2; udedges2++) {
           for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
             int state = state::coord_rep[sstate];
 
-            if (phase2[coord] == dist) {
-              count++;
-
-              for (move::mask moves = move::p2mask & state::moves[sstate]; moves; moves &= moves - 1) {
+            if (phase2[coord] == EMPTY && edgecheck[check] <= dist) {
+              for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
 
                 int state1 = state::move_coord[state][m];
-                int sstate1;
-                int csym1;
-                int udedges21;
                 int coord1;
                 if (m >= move::COUNT_CUBE) {
-                  sstate1 = state::cored_coord[state1][sym::coord_s(sym::corners_sym[corners])];
-                  csym1 = csym;
-                  udedges21 = udedges2;
+                  int sstate1 = state::cored_coord[state1][sym::coord_s(sym::corners_sym[corners])];
                   coord1 = (coord - sstate) + sstate1;
                 } else {
                   int corners1 = coord::move_corners[corners][m];
-                  udedges21 = coord::move_udedges2[udedges2][m];
+                  int udedges21 = coord::move_udedges2[udedges2][m];
                   int tmp = sym::corners_sym[corners1];
                   udedges21 = sym::conj_udedges2[udedges21][sym::coord_s(tmp)];
-                  csym1 = sym::coord_c(tmp);
-                  sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
+                  int csym1 = sym::coord_c(tmp);
+                  int sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
                   coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + sstate1;
                 }
-                state1 = state::coord_rep[sstate1];
 
-                if (phase2[coord1] <= dist1)
-                  continue;
-                phase2[coord1] = dist1;
-                coord1 -= state::N_COORD_SYM * udedges21 + sstate1;
-
-                int selfs = sym::corners_selfs[csym1] >> 1;
-                for (int s = 1; selfs > 0; s++) {
-                  if (selfs & 1) {
-                    int coord2 = coord1 + state::N_COORD_SYM * sym::conj_udedges2[udedges21][s] + state::cored_coord[state1][s];
-                    if (phase2[coord2] > dist1)
-                      phase2[coord2] = dist1;
-                  }
-                  selfs >>= 1;
+                if (phase2[coord1] == dist - 1) {
+                  phase2[coord] = dist;
+                  count++;
+                  break;
                 }
               }
             }
 
             coord++;
+            check++;
           }
         }
       }
@@ -255,6 +295,9 @@ namespace prun {
             if (precheck[coord] == EMPTY) {
               for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
+
+                if (state::move_coord[state][m] == -1)
+                  break;
 
                 int coord1;
                 int sstate1 = state::coord_cls[state::move_coord[state][m]];
@@ -302,7 +345,8 @@ namespace prun {
   }
 
   bool init(bool file) {
-    init_precheck();
+    // init_precheck();
+    init_phase2();
   }
 
   bool init1(bool file) {

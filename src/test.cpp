@@ -236,10 +236,10 @@ void test_phase1() {
     int state = std::rand() % state::N_COORD;
 
     int dist = prun::get_phase1(flip, slice, twist, state);
-    bool closer = false;
-    bool jump = false;
+    bool closer = false; // whether there exists at least one move that gets us closer to the goal
+    bool jump = false; // whether any move decreases the distance to goal by more than 1
 
-    for (move::mask moves = move::p1mask & state::moves[state::coord_cls[state]]; moves; moves &= moves - 1) {
+    for (move::mask moves = move::p1mask & state::moves[state]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
       int state1 = state::move_coord[state][m];
@@ -259,7 +259,7 @@ void test_phase1() {
       int delta = prun::get_phase1(flip1, slice1, twist1, state1) - dist;
       if (delta == -1)
         closer = true;
-      if (abs(delta) > 1)
+      if (delta < -1) // due to how we encode the grip state, there may be deltas > 1 in the table
         jump = true;
     }
 
@@ -302,9 +302,6 @@ void test_phase2() {
         udedges21 = udedges2;
       }
 
-      if (corners1 == 40319 && udedges21 == 13490 && state1 == 4)
-        std::cout << "Test\n";
-
       int delta = prun::get_phase2(corners1, udedges21, state1) - dist;
       if (delta == -1)
         closer = true;
@@ -333,8 +330,8 @@ void test_precheck() {
     int slice = coord::slice2_to_slice(slice2);
 
     int dist = prun::get_precheck(corners, slice, state);
-    bool closer = false; // whether there exists at least one move that gets us closer to the goal
-    bool jump = false; // whether any move decreases the distance to goal by more than 1
+    bool closer = false;
+    bool jump = false;
 
     for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
@@ -353,7 +350,7 @@ void test_precheck() {
       int delta = prun::get_precheck(corners1, slice1, state1) - dist;
       if (delta == -1)
         closer = true;
-      if (delta < -1) // due to how we encode the grip state, there may be deltas > 1 in the table
+      if (delta < -1)
         jump = true;
     }
 
@@ -373,18 +370,7 @@ int main() {
   sym::init();
   state::init();
   prun::init();
-  std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "ms" << std::endl;
-
-  cubie::cube c1 = cubie::SOLVED_CUBE;
-  cubie::cube c2 = cubie::SOLVED_CUBE;
-  coord::set_udedges2(c1, 11594);
-  coord::set_udedges2(c2, 12002);
-
-  cubie::cube tmp;
-  cubie::cube c3;
-  cubie::edge::mul(sym::cubes[6], c2, tmp);
-  cubie::edge::mul(tmp, sym::cubes[sym::inv[6]], c3);
-  std::cout << coord::get_udedges2(c3) << " " << sym::conj_udedges2[12002][6] << "\n";
+  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "s" << std::endl;
 
   // test_cubie();
   // test_coord();
@@ -392,8 +378,9 @@ int main() {
   // test_sym();
   // test_prun();
 
+  test_phase1();
   test_phase2();
-  // test_precheck();
+  test_precheck();
 
   return 0;
 }

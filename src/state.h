@@ -23,7 +23,7 @@ namespace state {
 
   struct cube {
     int fperm[face::color::COUNT]; // face permutation
-    int gstate; // gripper state
+    int grip; // gripper state
   };
 
   const cube ID_CUBE = {
@@ -40,7 +40,7 @@ namespace state {
 
   extern int coord_cls[N_COORD];
   extern int coord_rep[N_COORD_SYM];
-  extern int cored_coord[N_COORD][sym::COUNT_SUB]; // conj + reduction; joined table for faster solving
+  extern int cored_coord[N_COORD][sym::COUNT_SUB]; // conj w.r.t. to cube-sym + reduction w.r.t. robot-sym
 
   extern move::mask moves[N_COORD];
   extern int conj_move[move::COUNT_STATE][sym::COUNT];

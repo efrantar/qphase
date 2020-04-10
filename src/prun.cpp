@@ -15,43 +15,111 @@ namespace prun {
   uint8_t *phase2;
   uint8_t *precheck;
 
-  // Used to remap symmetry ext. phase 1 table entries back to actual situation
-  move::mask remap[2][12][1 << 16];
-  move::mask remap_state[2][12][1 << 8];
+  void init_phase1() {
+    // We use this small to table to dramatically speed up the backsearching for the actual phase 1 table generation
+    // (especially the early iterations where only very few entries are filled
 
-  int permute(int mask, int *perm, int len, int step) {
-    int applied = 0;
-    for (int i = 0; i < len; i++)
-      applied |= ((mask >> perm[i]) & ((1 << step) - 1)) << step * i;
-    return applied;
-  }
+    /*
+    int n_twistcheck = coord::N_TWIST * state::N_COORD_SYM;
+    uint8_t twistcheck[n_twistcheck];
+    std::fill(twistcheck, twistcheck + n_twistcheck, EMPTY);
 
-  void init_base() {
-    for (int eff = 0; eff < 12; eff++) {
-      for (int enc = 0; enc < 1 << 16; enc++) {
-        int tmp = permute(enc >> 1, sym::eff_mperm[sym::eff_nshift(eff)], 15, 1);
-        remap[0][eff][enc] = move::mask(enc & 1 ? 0 : ~tmp & 0x7fff) << 15 * sym::eff_shift(eff);
-        remap[1][eff][enc] = move::mask(enc & 1 ? ~tmp & 0x7fff : 0x7fff) << 15 * sym::eff_shift(eff);
-      }
-    }
+    for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++)
+      twistcheck[sstate] = 0;
+    int dist = 1;
+    int count = state::N_COORD_SYM;
 
-    for (int eff = 0; eff < 12; eff++) {
-      for (int enc = 0; enc < 1 << 8; enc++) {
-        int tmp = permute(enc, state::eff_mperm[sym::eff_nshift(eff)], move::COUNT_STATE, 2);
+    while (count < n_twistcheck) {
+      int coord = 0;
 
-        for (int delta : {0, 1}) {
-          remap_state[delta][eff][enc] = 0;
-          for (int i = move::COUNT_STATE; i >= 0; i--) {
-            remap_state[delta][eff][enc] <<= 1;
-            remap_state[delta][eff][enc] |= ((tmp >> 2 * i) & 0x3) <= delta;
+      for (int twist = 0; twist < coord::N_TWIST; twist++) {
+        for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
+          int state = state::coord_rep[sstate];
+
+          if (twistcheck[coord] == EMPTY) {
+            for (move::mask moves = move::p1mask & state::moves[state]; moves; moves &= moves - 1) {
+              int m = ffsll(moves) - 1;
+
+              int coord1;
+              int sstate1 = state::coord_cls[state::move_coord[state][m]];
+              if (m >= move::COUNT_CUBE)
+                coord1 = (coord - sstate) + sstate1;
+              else {
+                int twist1 = coord::move_twist[twist][m];
+                coord1 = state::N_COORD_SYM * twist1 + sstate1;
+              }
+
+              if (twistcheck[coord1] == dist - 1) {
+                twistcheck[coord] = dist;
+                count++;
+                break;
+              }
+            }
           }
-          remap_state[delta][eff][enc] <<= move::COUNT_CUBE;
+          coord++;
         }
       }
-    }
-  }
 
-  void init_phase1() {
+      std::cout << dist << " " << count << std::endl;
+      dist++;
+    }
+    */
+
+    int n_fs1symcheck = sym::N_FSLICE1 * state::N_COORD_SYM;
+    uint8_t fs1symcheck[n_fs1symcheck];
+    std::fill(fs1symcheck, fs1symcheck + n_fs1symcheck, EMPTY);
+
+    for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
+      int tmp = sym::coord_c(sym::fslice1_sym[coord::fslice1(0, coord::SLICE1_SOLVED)]);
+      fs1symcheck[state::N_COORD_SYM * tmp + sstate] = 0;
+    }
+    int dist = 1;
+    int count = state::N_COORD_SYM;
+
+    while (count < n_fs1symcheck) {
+      int coord = 0;
+
+      for (int fs1sym = 0; fs1sym < sym::N_FSLICE1; fs1sym++) {
+        int fslice1 = sym::fslice1_raw[fs1sym];
+        int flip = coord::fslice1_to_flip(fslice1);
+        int slice = coord::slice1_to_slice(coord::fslice1_to_slice1(fslice1));
+
+        for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
+          int state = state::coord_rep[sstate];
+
+          if (fs1symcheck[coord] == EMPTY) {
+            for (move::mask moves = move::p1mask & state::moves[state]; moves; moves &= moves - 1) {
+              int m = ffsll(moves) - 1;
+
+              int coord1;
+              int state1 = state::move_coord[state][m];
+              if (m >= move::COUNT_CUBE) {
+                // Don't forget that we are symmetry reducing w.r.t. FSLICE1 and thus need to conjugate here
+                int sstate1 = state::cored_coord[state1][sym::coord_s(sym::fslice1_sym[fslice1])];
+                coord1 = (coord - sstate) + sstate1;
+              } else {
+                int slice11 = coord::slice_to_slice1(coord::move_edges4[slice][m]);
+                int fslice11 = coord::fslice1(coord::move_flip[flip][m], slice11);
+                int tmp = sym::fslice1_sym[fslice11];
+                int sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
+                coord1 = state::N_COORD_SYM * sym::coord_c(tmp) + sstate1;
+              }
+
+              if (fs1symcheck[coord1] == dist - 1) {
+                fs1symcheck[coord] = dist;
+                count++;
+                break;
+              }
+            }
+          }
+          coord++;
+        }
+      }
+
+      std::cout << dist << " " << count << std::endl;
+      dist++;
+    }
+
     phase1 = new uint8_t[N_FS1TWIST];
     std::fill(phase1, phase1 + N_FS1TWIST, EMPTY);
 
@@ -60,8 +128,8 @@ namespace prun {
       int tmp = coord::N_TWIST * sym::coord_c(sym::fslice1_sym[coord::fslice1(0, coord::SLICE1_SOLVED)]);
       phase1[state::N_COORD_SYM * tmp + sstate] = 0;
     }
-    int count = 0;
-    int dist = 0;
+    dist = 1;
+    count = state::N_COORD_SYM;
 
     while (count < N_FS1TWIST) {
       int coord = 0;
@@ -71,87 +139,40 @@ namespace prun {
         int flip = coord::fslice1_to_flip(fslice1);
         int slice = coord::slice1_to_slice(coord::fslice1_to_slice1(fslice1));
 
+        // int check = 0;
+        int check = state::N_COORD_SYM * fs1sym;
         for (int twist = 0; twist < coord::N_TWIST; twist++) {
           for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
             int state = state::coord_rep[sstate];
 
-            if (phase1[coord] == dist) {
-              count++;
-              int deltas[move::COUNT];
-
-              for (move::mask moves = move::p1mask & state::moves[sstate]; moves; moves &= moves - 1) {
+            if (phase1[coord] == EMPTY && fs1symcheck[check + sstate] <= dist) {
+              for (move::mask moves = move::p1mask & state::moves[state]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
 
-                int state1 = state::move_coord[state][m];
-                int sstate1;
-                int fs1sym1;
-                int twist1;
                 int coord1;
+                int state1 = state::move_coord[state][m];
                 if (m >= move::COUNT_CUBE) {
-                  // Don't forget that we are symmetry reducing w.r.t. FSLICE1 and thus need to conjugate here
-                  sstate1 = state::cored_coord[state1][sym::coord_s(sym::fslice1_sym[fslice1])];
-                  fs1sym1 = fs1sym;
-                  twist1 = twist;
+                  int sstate1 = state::cored_coord[state1][sym::coord_s(sym::fslice1_sym[fslice1])];
                   coord1 = (coord - sstate) + sstate1;
                 } else {
                   int slice11 = coord::slice_to_slice1(coord::move_edges4[slice][m]);
                   int fslice11 = coord::fslice1(coord::move_flip[flip][m], slice11);
                   int tmp = sym::fslice1_sym[fslice11];
-                  twist1 = sym::conj_twist[coord::move_twist[twist][m]][sym::coord_s(tmp)];
-                  fs1sym1 = sym::coord_c(tmp);
-                  sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
-                  coord1 = state::N_COORD_SYM * (coord::N_TWIST * fs1sym1 + twist1) + sstate1;
+                  int twist1 = sym::conj_twist[coord::move_twist[twist][m]][sym::coord_s(tmp)];
+                  int sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
+                  coord1 = state::N_COORD_SYM * (coord::N_TWIST * sym::coord_c(tmp) + twist1) + sstate1;
                 }
-                state1 = state::coord_rep[sstate1]; // we need to apply self-symmetries to the conjugated raw state
 
-                if (phase1[coord1] != EMPTY) {
-                  deltas[m] = phase1[coord] - dist;
-                  continue;
-                }
-                phase1[coord1] = dist1;
-                deltas[m] = 1;
-                coord1 -= state::N_COORD_SYM * twist1 + sstate1; // only TWIST and SSTATE parts change below
-
-                int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
-                for (int s = 1; selfs > 0; s++) { // bit 0 is always on
-                  if (selfs & 1) {
-                    int coord2 = coord1 + state::N_COORD_SYM * sym::conj_twist[twist1][s] + state::cored_coord[state1][s];
-                    if (phase1[coord2] == EMPTY)
-                      phase1[coord2] = dist1;
-                  }
-                  selfs >>= 1;
+                if (phase1[coord1] == dist - 1) {
+                  phase1[coord] = dist;
+                  count++;
+                  break;
                 }
               }
-
-#ifdef FALSE
-              /* Encode from left to right to preserve indexing of moves */
-              uint64_t prun = 0;
-
-              for (int m = move::COUNT - 1; m >= move::COUNT_CUBE; m--)
-                prun = (prun << 2) | (deltas[m] + 1);
-              for (int ax = 30; ax >= 0; ax -= 15) {
-                bool away = false;
-                for (int i = ax; i < ax + 15; i++) {
-                  if (deltas[i] != 0) {
-                    away = deltas[i] > 0;
-                    break; // stop immediately once we found a value != 0
-                  }
-                }
-
-                int tmp = 0;
-                for (int i = (ax + 15) - 1; i >= ax; i--)
-                  tmp = (tmp | (deltas[i] + ~away)) << 1;
-                tmp |= away;
-
-                prun = (prun << 16) | tmp;
-              }
-
-              phase1[coord] |= prun << 8;
-#endif
             }
 
             coord++;
+            // check++;
           }
         }
       }
@@ -162,7 +183,6 @@ namespace prun {
   }
 
   void init_phase2() {
-    // We use this small to table to dramatically speed up the backsearching for the actual phase 2 table generation
     int n_edgecheck = coord::N_UDEDGES2 * state::N_COORD_SYM;
     uint8_t edgecheck[n_edgecheck];
     std::fill(edgecheck, edgecheck + n_edgecheck, EMPTY);
@@ -193,8 +213,6 @@ namespace prun {
               }
 
               if (edgecheck[coord1] == dist - 1) {
-                if (udedges2 == 12002 && sstate == 14)
-                  std::cout << "Test\n";
                 edgecheck[coord] = dist;
                 count++;
                 break;
@@ -207,13 +225,6 @@ namespace prun {
 
       std::cout << dist << " " << count << std::endl;
       dist++;
-    }
-
-    for (int sstate = 0; sstate < state::N_COORD_SYM; sstate++) {
-      std::cout << int(edgecheck[state::N_COORD_SYM * 13490 + sstate]);
-      std::cout << " " << int(edgecheck[state::N_COORD_SYM * 26554 + sstate]);
-      std::cout << " " << int(edgecheck[state::N_COORD_SYM * 13490 + state::cored_coord[state::coord_rep[sstate]][4]]);
-      std::cout << " " << state::cored_coord[state::coord_rep[sstate]][4] << "\n";
     }
 
     phase2 = new uint8_t[N_CORNUD2];
@@ -239,8 +250,8 @@ namespace prun {
               for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
 
-                int state1 = state::move_coord[state][m];
                 int coord1;
+                int state1 = state::move_coord[state][m];
                 if (m >= move::COUNT_CUBE) {
                   int sstate1 = state::cored_coord[state1][sym::coord_s(sym::corners_sym[corners])];
                   coord1 = (coord - sstate) + sstate1;
@@ -249,9 +260,8 @@ namespace prun {
                   int udedges21 = coord::move_udedges2[udedges2][m];
                   int tmp = sym::corners_sym[corners1];
                   udedges21 = sym::conj_udedges2[udedges21][sym::coord_s(tmp)];
-                  int csym1 = sym::coord_c(tmp);
                   int sstate1 = state::cored_coord[state1][sym::coord_s(tmp)];
-                  coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + sstate1;
+                  coord1 = state::N_COORD_SYM * (coord::N_UDEDGES2 * sym::coord_c(tmp) + udedges21) + sstate1;
                 }
 
                 if (phase2[coord1] == dist - 1) {
@@ -345,13 +355,6 @@ namespace prun {
   }
 
   bool init(bool file) {
-    // init_precheck();
-    init_phase2();
-  }
-
-  bool init1(bool file) {
-    init_base();
-
     if (!file) {
       init_phase1();
       init_phase2();

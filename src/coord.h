@@ -25,11 +25,11 @@ namespace coord {
 
   const int SLICE1_SOLVED = 494; // SLICE1 is not 0 at the end of phase 1
 
-  extern uint16_t move_flip[N_FLIP][move::COUNT_CUBE];
-  extern uint16_t move_twist[N_TWIST][move::COUNT_CUBE];
-  extern uint16_t move_edges4[N_SLICE][move::COUNT_CUBE];
-  extern uint16_t move_corners[N_CORNERS][move::COUNT_CUBE];
-  extern uint16_t move_udedges2[N_UDEDGES2][move::COUNT_CUBE]; // primarily for faster phase 2 table generation
+  extern uint16_t move_flip[N_FLIP][move::COUNT];
+  extern uint16_t move_twist[N_TWIST][move::COUNT];
+  extern uint16_t move_edges4[N_SLICE][move::COUNT];
+  extern uint16_t move_corners[N_CORNERS][move::COUNT];
+  extern uint16_t move_udedges2[N_UDEDGES2][move::COUNT]; // primarily for faster phase 2 table generation
 
   int get_flip(const cubie::cube& c);
   int get_twist(const cubie::cube& c);

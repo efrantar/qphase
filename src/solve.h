@@ -21,14 +21,11 @@ namespace solve {
     int uedges;
     int dedges;
     int corners;
+    int state;
   };
 
   // Number of search directions
-  #ifdef F5
-    const int N_DIRS = 4;
-  #else
-    const int N_DIRS = 6;
-  #endif
+  const int N_DIRS = 6;
 
   class Engine {
 
@@ -39,7 +36,7 @@ namespace solve {
     int tlim; // search for this amount of milliseconds
 
     coordc dirs[N_DIRS]; // search directions
-    move::mask masks[move::COUNT1]; // split masks
+    move::mask masks[move::COUNT]; // split masks
     int depths[N_DIRS]; // current search depths per direction
     int splits[N_DIRS]; // current search splits per direction
 

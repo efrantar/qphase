@@ -30,6 +30,7 @@ void init() {
   move::init();
   coord::init();
   sym::init();
+  state::init();
   if (prun::init(true)) {
     std::cout << "Error." << std::endl;
     exit(1);
@@ -57,17 +58,24 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
+// TODO: incorporate state
 bool check(const cubie::cube &c, const std::vector<int>& sol) {
   cubie::cube c1;
   cubie::cube c2;
 
   c1 = c;
   for (int m : sol) {
-    cubie::mul(c1, move::cubes[m], c2);
-    std::swap(c1, c2);
+    if (m < move::COUNT_CUBE) {
+      cubie::mul(c1, move::cubes[m], c2);
+      std::swap(c1, c2);
+    }
   }
 
   return c1 == cubie::SOLVED_CUBE;
+}
+
+int len(const std::vector<int>& sol) {
+  return sol.size();
 }
 
 double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vector<int>&)) {
@@ -189,12 +197,7 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl;
         std::cout << "Failed: " << failed << std::endl;
         std::cout << "Avg. Time: " << std::accumulate(times.begin(), times.end(), 0.) / times.size() << " ms" << std::endl;
-        std::cout << "Avg. Moves: "
-          << mean(sols, move::len_ht) << " (HT), "
-          << mean(sols, move::len_qt) << " (QT), "
-          << mean(sols, move::len_axht) << " (AXHT), "
-          << mean(sols, move::len_axqt) << " (AXQT)"
-        << std::endl;
+        std::cout << "Avg. Moves: " << mean(sols, len) << std::endl;
 
         int freq[100];
         int min = 100;
@@ -247,9 +250,9 @@ int main(int argc, char *argv[]) {
 
       for (std::vector<int>& sol : sols) {
         int len = sol.size(); // always print uncompressed length
-        if (compress)
-          std::cout << move::compress(sol) << " ";
-        else {
+        if (compress) {
+          // std::cout << move::compress(sol) << " "; TODO
+        } else {
           for (int m : sol)
             std::cout << move::names[m] << " ";
         }

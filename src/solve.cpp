@@ -3,10 +3,17 @@
 #include <algorithm>
 #include <strings.h>
 #include <thread>
+#include <iostream>
 #include "prun.h"
 #include "sym.h"
 
+// TODO: better task splitting
+
 namespace solve {
+
+  const int DIR_STATES[] = {
+    0, state::N_GRIP * 5, state::N_GRIP * 8, 0, state::N_GRIP * 5, state::N_GRIP * 8
+  }; // inversion does not change axis permutation
 
   class Search {
 
@@ -27,10 +34,10 @@ namespace solve {
 
   private:
     void phase1(
-      int depth, int togo, int flip, int slice, int twist, int corners, move::mask next, move::mask qt_skip
+      int depth, int togo, int flip, int slice, int twist, int corners, int state, move::mask next
     ); // phase 1 search; iterates through all solution with exactly `togo` moves
     bool phase2(
-      int depth, int togo, int slice, int udedges2, int corners, move::mask next, move::mask qt_skip
+      int depth, int togo, int slice, int udedges2, int corners, int state, move::mask next
     ); // phase 2 search; returns once any solution is found
 
   public:
@@ -49,19 +56,17 @@ namespace solve {
     dedges[0] = cube.dedges;
     edges_depth = 0;
 
-    move::mask next;
-    prun::get_phase1(cube.flip, cube.slice, cube.twist, p1depth, next);
-    next &= move::p1mask & d0moves; // block B-moves in F5 mode here and select current search split
-    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, next, 0);
+    move::mask next = move::p1mask & state::moves[cube.state] & d0moves; // select current search split
+    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.state, next);
   }
 
   void Search::phase1(
-    int depth, int togo, int flip, int slice, int twist, int corners, move::mask next, move::mask qt_skip
+    int depth, int togo, int flip, int slice, int twist, int corners, int state, move::mask next
   ) {
     if (done)
       return;
     if (togo == 0) {
-      int tmp = prun::get_precheck(corners, slice);
+      int tmp = prun::get_precheck(corners, slice, state);
       if (tmp >= lenlim - depth) // phase 2 precheck, only reconstruct edges if successful
         return;
 
@@ -72,16 +77,10 @@ namespace solve {
       edges_depth = depth - 1;
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
-      int delta = 1;
-      #ifndef AX
-        #ifdef QT
-          delta++; // in vanilla QT mode the perm-parity indicates whether solution length is odd or even
-        #endif
-      #endif
-      for (int togo1 = std::max(prun::get_phase2(corners, udedges2), tmp); togo1 < lenlim - depth; togo1 += delta) {
+      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, state), tmp); togo1 < lenlim - depth; togo1++) {
         // We don't want to block any moves here as this might cause us to require another full search with
         // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
-        if (phase2(depth, togo1, slice, udedges2, corners, move::p2mask, 0))
+        if (phase2(depth, togo1, slice, udedges2, corners, state, move::p2mask & state::moves[state]))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
       return;
@@ -96,21 +95,18 @@ namespace solve {
       int flip1 = coord::move_flip[flip][m];
       int slice1 = coord::move_edges4[slice][m];
       int twist1 = coord::move_twist[twist][m];
-      move::mask next1;
-      int dist1 = prun::get_phase1(flip1, slice1, twist1, togo, next1);
+      int state1 = state::move_coord[state][m];
+      int dist1 = prun::get_phase1(flip1, slice1, twist1, state1);
+
+      if (dist1 > togo)
+        continue;
 
       // Check inside loop to avoid unnecessary recursion unwinds
       if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
         int corners1 = coord::move_corners[corners][m];
         moves[depth - 1] = m;
-
-        next1 &= move::p1mask & move::next[m];
-        move::mask qt_skip1;
-        #ifdef QT // let `qt_skip` get completely optimized away when not in QT-mode
-          qt_skip1 = move::qt_skip[m];
-          next1 &= ~(qt_skip & qt_skip1);
-        #endif
-        phase1(depth, togo, flip1, slice1, twist1, corners1, next1, qt_skip1);
+        move::mask next1 = move::p1mask & move::next[m] & state::moves[state1];
+        phase1(depth, togo, flip1, slice1, twist1, corners1, state1, next1);
       }
     }
 
@@ -122,7 +118,7 @@ namespace solve {
   }
 
   bool Search::phase2(
-    int depth, int togo, int slice, int udedges2, int corners, move::mask next, move::mask qt_skip
+    int depth, int togo, int slice, int udedges2, int corners, int state, move::mask next
   ) {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
@@ -143,33 +139,12 @@ namespace solve {
       int slice1 = coord::move_edges4[slice][m];
       int udedges21 = coord::move_udedges2[udedges2][m];
       int corners1 = coord::move_corners[corners][m];
+      int state1 = state::move_coord[state][m];
 
-      if (prun::get_phase2(corners1, udedges21) < togo) {
-        #ifdef QT
-          // As we never want to leave the set of phase 2 cubes (which we would by doing only a quarter-turn on an axis
-          // for which only double-moves are permitted), we need special handling of the double moves. The simplest way
-          // to do this is to treat a double moves simply as if two consecutive quarter-turns were added to the current
-          // search path.
-          if (m >= move::COUNT1) {
-            if (togo <= 1) // we cannot do half turns when only a single quarter-turn is permitted
-              break;
-
-            int tmp = move::split[m];
-            moves[depth] = tmp;
-            moves[depth + 1] = tmp;
-
-            move::mask next1 = move::p2mask & move::next[m];
-            move::mask qt_skip1 = move::qt_skip[m];
-            next1 &= ~(qt_skip & qt_skip1);
-
-            if (phase2(depth + 2, togo - 2, slice1, udedges21, corners1, next1, qt_skip1))
-              return true;
-            continue;
-          }
-        #endif
-
+      if (prun::get_phase2(corners1, udedges21, state1) < togo) {
         moves[depth] = m;
-        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, move::p2mask & move::next[m], 0))
+        move::mask next1 = move::p2mask & move::next[m] & state::moves[state1];
+        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, state1, next1))
           return true; // return as soon as we have a solution
       }
     }
@@ -181,7 +156,7 @@ namespace solve {
     int n_threads, int tlim,
     int n_sols, int max_len, int n_splits
   ) : n_threads(n_threads), tlim(tlim), n_sols(n_sols), max_len(max_len), n_splits(n_splits) {
-    int tmp = (move::COUNT1 + n_splits - 1) / n_splits; // ceil to make sure that we always include all moves
+    int tmp = (move::COUNT + n_splits - 1) / n_splits; // ceil to make sure that we always include all moves
     for (int i = 0; i < n_splits; i++)
       masks[i] = (move::mask(1) << tmp) - 1 << tmp * i;
     done = true; // make sure that the first `prepare()` will actually do something
@@ -242,9 +217,9 @@ namespace solve {
       dirs[dir].uedges = coord::get_uedges(tmp2);
       dirs[dir].dedges = coord::get_dedges(tmp2);
       dirs[dir].corners = coord::get_corners(tmp2);
+      dirs[dir].state = DIR_STATES[dir];
 
-      move::mask tmp; // simply ignore, makes no sense anyways without proper `togo`
-      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, 100, tmp);
+      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].state);
       splits[dir] = 0;
     }
 
@@ -265,10 +240,10 @@ namespace solve {
 
       int rot = sym::ROT * (sol.second / 2);
       for (int j = 0; j < res[i].size(); j++) // undo rotation
-        res[i][j] = sym::conj_move[sol.first[j]][rot];
+        res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
       if (sol.second & 1) { // undo inversion
         for (int j = 0; j < res[i].size(); j++)
-          res[i][j] = move::inv[res[i][j]];
+          res[i][j] = res[i][j] < move::COUNT_CUBE ? move::inv[res[i][j]] : res[i][j];
         std::reverse(res[i].begin(), res[i].end());
       }
 

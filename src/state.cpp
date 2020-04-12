@@ -17,12 +17,15 @@ namespace state {
   int eff_mperm[sym::COUNT_SUB][move::COUNT_STATE];
   int move_coord[N_COORD][move::COUNT];
 
+  const int G_HALF_RL = 5;
+  const int G_HALF_FB = 6;
+
   // Multiply gripper states
   const int G_MUL[6][6] = {
     {G_NEUTRAL,    G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_BLOCKED_FB},
     {G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_FB, G_PARTIAL_RL, G_BLOCKED_FB},
-    {G_PARTIAL_FB, G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_PARTIAL_FB},
-    {G_BLOCKED_RL, G_PARTIAL_RL, -1,           G_NEUTRAL,    -1          },
+    {G_PARTIAL_FB, G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_NEUTRAL   },
+    {G_BLOCKED_RL, G_PARTIAL_RL, -1,           G_PARTIAL_FB, -1          },
     {G_BLOCKED_FB, -1,           G_PARTIAL_FB, -1,           G_NEUTRAL   }
   };
 
@@ -125,14 +128,14 @@ namespace state {
     std::fill(moves, moves + N_COORD, 0);
     for (int coord = 0; coord < N_COORD; coord++) {
       set_coord(c, coord);
-      if (c.grip == G_BLOCKED_RL) // if we are blocked we can only move that axis
-        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[1] % 3)) | (move::mask(0b0101) << move::COUNT_CUBE);
+      if (c.grip == G_BLOCKED_RL) // if we need to regrip or tilt on this axis
+        moves[coord] = move::mask(0b0101) << move::COUNT_CUBE;
       else if (c.grip == G_BLOCKED_FB)
-        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[2] % 3)) | (move::mask(0b1010) << move::COUNT_CUBE);
+        moves[coord] = move::mask(0b1010) << move::COUNT_CUBE;
       else {
         moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
         moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
-        moves[coord] |= move::mask(0xf) << move::COUNT_CUBE;
+        moves[coord] |= move::mask(0b0011) << move::COUNT_CUBE;
       }
     }
 

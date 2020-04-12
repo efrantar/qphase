@@ -39,3 +39,4 @@ tables
 .idea
 CMakeLists.txt
 cmake-build-debug
+twophase1.tbl

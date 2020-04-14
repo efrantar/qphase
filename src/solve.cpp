@@ -12,7 +12,7 @@
 namespace solve {
 
   const int DIR_STATES[] = {
-    0, state::N_GRIP * 5, state::N_GRIP * 8, 0, state::N_GRIP * 5, state::N_GRIP * 8
+    0, 1, 2, 0, 1, 2
   }; // inversion does not change axis permutation
 
   class Search {

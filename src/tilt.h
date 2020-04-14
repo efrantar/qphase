@@ -5,13 +5,12 @@
 #include "move.h"
 #include "sym.h"
 
-namespace state {
+namespace tilt {
 
   using namespace face::color;
 
-  const int N_TILT = 24; // tilt, i.e. face permutation
-  const int N_COORD = N_TILT; // overall state coordinate
-  const int N_COORD_SYM = 3; // symmetry reduced overall state coordinate
+  const int N_COORD = 24; // 4!, i.e. number of face permutations
+  const int N_COORD_SYM = 3;
 
   struct cube {
     int fperm[face::color::COUNT]; // face permutation

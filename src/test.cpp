@@ -12,7 +12,7 @@
 #include "cubie.h"
 #include "move.h"
 #include "prun.h"
-#include "state.h"
+#include "tilt.h"
 #include "sym.h"
 
 inline void ok() { std::cout << "Ok." << std::endl; }

@@ -30,7 +30,7 @@ void init() {
   move::init();
   coord::init();
   sym::init();
-  state::init();
+  tilt::init();
   if (prun::init(true)) {
     std::cout << "Error." << std::endl;
     exit(1);
@@ -58,7 +58,7 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
-// TODO: incorporate state
+// TODO: incorporate tilt
 bool check(const cubie::cube &c, const std::vector<int>& sol) {
   cubie::cube c1;
   cubie::cube c2;

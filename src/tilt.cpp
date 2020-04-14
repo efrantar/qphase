@@ -1,10 +1,10 @@
-#include "state.h"
+#include "tilt.h"
 
 #include <algorithm>
 #include <vector>
 #include "move.h"
 
-namespace state {
+namespace tilt {
 
   using namespace move;
 
@@ -52,7 +52,7 @@ namespace state {
     cube c1;
     cube tmp;
 
-    // The symmetry class is simply given by the axis the robot cannot turn in this state
+    // The symmetry class is simply given by the axis the robot cannot turn in this tilt
     for (int coord = N_COORD - 1; coord >= 0; coord--) { // the rep should always be the smallest value
       set_coord(c, coord);
       coord_cls[coord] = c.fperm[0] % 3;
@@ -138,7 +138,7 @@ namespace state {
   }
 
   int get_coord(const cube& c) {
-    for (int tilt = 0; tilt < N_TILT; tilt++) {
+    for (int tilt = 0; tilt < N_COORD; tilt++) {
       if (std::equal(c.fperm, c.fperm + face::color::COUNT, FPERMS[tilt]))
         return tilt;
     }

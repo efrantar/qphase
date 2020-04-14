@@ -21,7 +21,7 @@ namespace solve {
     int uedges;
     int dedges;
     int corners;
-    int state;
+    int tilt;
   };
 
   // Number of search directions

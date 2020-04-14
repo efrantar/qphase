@@ -8,14 +8,14 @@
 #include <cstdint>
 
 #include "coord.h"
-#include "state.h"
+#include "tilt.h"
 #include "sym.h"
 
 namespace prun {
 
-  const int N_FS1TWIST = sym::N_FSLICE1 * coord::N_TWIST * state::N_COORD_SYM;
-  const int N_CORNUD2 = sym::N_CORNERS * coord::N_UDEDGES2 * state::N_COORD_SYM;
-  const int N_CSLICE2 = coord::N_CORNERS * coord::N_SLICE2 * state::N_COORD_SYM;
+  const int N_FS1TWIST = sym::N_FSLICE1 * coord::N_TWIST * tilt::N_COORD_SYM;
+  const int N_CORNUD2 = sym::N_CORNERS * coord::N_UDEDGES2 * tilt::N_COORD_SYM;
+  const int N_CSLICE2 = coord::N_CORNERS * coord::N_SLICE2 * tilt::N_COORD_SYM;
 
   extern uint8_t *phase1;
   extern uint8_t *phase2;

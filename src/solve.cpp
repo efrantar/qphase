@@ -11,7 +11,7 @@
 
 namespace solve {
 
-  const int DIR_STATES[] = {
+  const int DIR_TILTS[] = {
     0, 1, 2, 0, 1, 2
   }; // inversion does not change axis permutation
 
@@ -34,10 +34,10 @@ namespace solve {
 
   private:
     void phase1(
-      int depth, int togo, int flip, int slice, int twist, int corners, int state, move::mask next
+      int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
     ); // phase 1 search; iterates through all solution with exactly `togo` moves
     bool phase2(
-      int depth, int togo, int slice, int udedges2, int corners, int state, move::mask next
+      int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
     ); // phase 2 search; returns once any solution is found
 
   public:
@@ -56,17 +56,17 @@ namespace solve {
     dedges[0] = cube.dedges;
     edges_depth = 0;
 
-    move::mask next = move::p1mask & state::moves[cube.state] & d0moves; // select current search split
-    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.state, next);
+    move::mask next = move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
+    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next);
   }
 
   void Search::phase1(
-    int depth, int togo, int flip, int slice, int twist, int corners, int state, move::mask next
+    int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
   ) {
     if (done)
       return;
     if (togo == 0) {
-      int tmp = prun::get_precheck(corners, slice, state);
+      int tmp = prun::get_precheck(corners, slice, tilt);
       if (tmp >= lenlim - depth) // phase 2 precheck, only reconstruct edges if successful
         return;
 
@@ -77,10 +77,10 @@ namespace solve {
       edges_depth = depth - 1;
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
-      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, state), tmp); togo1 < lenlim - depth; togo1++) {
+      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt), tmp); togo1 < lenlim - depth; togo1++) {
         // We don't want to block any moves here as this might cause us to require another full search with
         // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
-        if (phase2(depth, togo1, slice, udedges2, corners, state, move::p2mask & state::moves[state]))
+        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt]))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
       return;
@@ -95,8 +95,8 @@ namespace solve {
       int flip1 = coord::move_flip[flip][m];
       int slice1 = coord::move_edges4[slice][m];
       int twist1 = coord::move_twist[twist][m];
-      int state1 = state::move_coord[state][m];
-      int dist1 = prun::get_phase1(flip1, slice1, twist1, state1);
+      int tilt1 = tilt::move_coord[tilt][m];
+      int dist1 = prun::get_phase1(flip1, slice1, twist1, tilt1);
 
       if (dist1 > togo)
         continue;
@@ -105,8 +105,8 @@ namespace solve {
       if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
         int corners1 = coord::move_corners[corners][m];
         moves[depth - 1] = m;
-        move::mask next1 = move::p1mask & move::next[m] & state::moves[state1];
-        phase1(depth, togo, flip1, slice1, twist1, corners1, state1, next1);
+        move::mask next1 = move::p1mask & move::next[m] & tilt::moves[tilt1];
+        phase1(depth, togo, flip1, slice1, twist1, corners1, tilt1, next1);
       }
     }
 
@@ -118,7 +118,7 @@ namespace solve {
   }
 
   bool Search::phase2(
-    int depth, int togo, int slice, int udedges2, int corners, int state, move::mask next
+    int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
   ) {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
@@ -139,12 +139,12 @@ namespace solve {
       int slice1 = coord::move_edges4[slice][m];
       int udedges21 = coord::move_udedges2[udedges2][m];
       int corners1 = coord::move_corners[corners][m];
-      int state1 = state::move_coord[state][m];
+      int tilt1 = tilt::move_coord[tilt][m];
 
-      if (prun::get_phase2(corners1, udedges21, state1) < togo) {
+      if (prun::get_phase2(corners1, udedges21, tilt1) < togo) {
         moves[depth] = m;
-        move::mask next1 = move::p2mask & move::next[m] & state::moves[state1];
-        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, state1, next1))
+        move::mask next1 = move::p2mask & move::next[m] & tilt::moves[tilt1];
+        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1))
           return true; // return as soon as we have a solution
       }
     }
@@ -217,9 +217,9 @@ namespace solve {
       dirs[dir].uedges = coord::get_uedges(tmp2);
       dirs[dir].dedges = coord::get_dedges(tmp2);
       dirs[dir].corners = coord::get_corners(tmp2);
-      dirs[dir].state = DIR_STATES[dir];
+      dirs[dir].tilt = DIR_TILTS[dir];
 
-      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].state);
+      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt);
       splits[dir] = 0;
     }
 

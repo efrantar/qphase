@@ -60,7 +60,7 @@ void test_getset(int (*get_coord)(const cubie::cube&), void (*set_coord)(cubie::
 }
 
 void test_movecoord(
-  uint16_t move_coord[][move::COUNT_CUBE],int n_coord, move::mask moves = move::p1mask | move::p2mask
+  uint16_t move_coord[][move::COUNT],int n_coord, move::mask moves = move::p1mask | move::p2mask
 ) {
   moves &= move::bit(move::COUNT_CUBE) - 1; // state moves must not be applied to coords
   for (int coord = 0; coord < n_coord; coord++) {

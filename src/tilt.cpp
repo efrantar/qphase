@@ -13,7 +13,7 @@ namespace tilt {
   int cored_coord[N_COORD][sym::COUNT_SUB];
 
   move::mask moves[N_COORD];
-  int conj_move[move::COUNT_STATE][sym::COUNT];
+  int conj_move[move::COUNT_TILT][sym::COUNT];
   int move_coord[N_COORD][move::COUNT];
 
   // All legal face permutations

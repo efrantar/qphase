@@ -44,7 +44,7 @@ namespace prun {
 
               for (move::mask moves = move::p1mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
+                int dist1 = dist + move::cost[m];
 
                 int tilt1 = tilt::move_coord[tilt][m];
                 int stilt1;
@@ -68,7 +68,7 @@ namespace prun {
                 }
                 tilt1 = tilt::coord_rep[stilt1]; // we need to apply self-symmetries to the conjugated raw tilt
 
-                if (phase1[coord1] <= dist)
+                if (phase1[coord1] <= dist1)
                   continue;
                 phase1[coord1] = dist1;
                 coord1 -= tilt::N_COORD_SYM * twist1 + stilt1; // only TWIST and STILT parts change below
@@ -119,7 +119,7 @@ namespace prun {
 
               for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
+                int dist1 = dist + move::cost[m];
 
                 int tilt1 = tilt::move_coord[tilt][m];
                 int stilt1;
@@ -193,7 +193,7 @@ namespace prun {
 
               for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
-                int dist1 = dist + 1;
+                int dist1 = dist + move::cost[m];
 
                 int coord1;
                 int tilt1 = tilt::move_coord[tilt][m];

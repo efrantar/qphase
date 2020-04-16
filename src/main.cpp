@@ -74,11 +74,8 @@ bool check(const cubie::cube &c, const std::vector<int>& sol) {
   return c1 == cubie::SOLVED_CUBE;
 }
 
-int cost(const std::vector<int>& sol) {
-  int cost = 0;
-  for (int m : sol)
-    cost += move::cost[m];
-  return cost;
+int len(const std::vector<int>& sol) {
+  return sol.size();
 }
 
 double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vector<int>&)) {
@@ -142,7 +139,7 @@ int main(int argc, char *argv[]) {
     usage();
   }
 
-  std::cout << "This is qphase v0.1; copyright Elias Frantar 2020." << std::endl << std::endl;
+  std::cout << "This is rob-twophase v2.0; copyright Elias Frantar 2020." << std::endl << std::endl;
   init();
   solve::Engine solver(n_threads, tlim, n_sols, max_len, n_splits);
   warmup(solver, n_warmups);
@@ -200,7 +197,7 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl;
         std::cout << "Failed: " << failed << std::endl;
         std::cout << "Avg. Time: " << std::accumulate(times.begin(), times.end(), 0.) / times.size() << " ms" << std::endl;
-        std::cout << "Avg. Moves: " << mean(sols, cost) << std::endl;
+        std::cout << "Avg. Moves: " << mean(sols, len) << std::endl;
 
         int freq[100];
         int min = 100;
@@ -252,9 +249,9 @@ int main(int argc, char *argv[]) {
       ).count() / 1000. << "ms" << std::endl;
 
       for (std::vector<int>& sol : sols) {
-        int len = cost(sol);
+        int len = sol.size(); // always print uncompressed length
         if (compress) {
-          // std::cout << move::compress(sol) << " "; TODO: not implemented, but probably also not needed
+          // std::cout << move::compress(sol) << " "; TODO
         } else {
           for (int m : sol)
             std::cout << move::names[m] << " ";

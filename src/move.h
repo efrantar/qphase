@@ -12,8 +12,8 @@ namespace move {
   using mask = uint64_t;
 
   const int COUNT_CUBE = 45;
-  const int COUNT_TILT = 2;
-  const int COUNT = COUNT_CUBE + COUNT_TILT;
+  const int COUNT_STATE = 2;
+  const int COUNT = COUNT_CUBE + COUNT_STATE;
 
   const int U1 = 0;
   const int U2 = 1;
@@ -80,16 +80,6 @@ namespace move {
     R3, R2, R1, L3, L2, L1, R3L3, R3L2, R3L1, R2L3, R2L2, R2L1, R1L3, R1L2, R1L1,
     F3, F2, F1, B3, B2, B1, F3B3, F3B2, F3B1, F2B3, F2B2, F2B1, F1B3, F1B2, F1B1,
     -1, -1 // we don't need inverses for the rotations
-  };
-
-  const int cost[] = {
-    2, 3, 2, 2, 3, 2,
-    2, 3, 2, 3, 3, 3, 2, 3, 2,
-    2, 3, 2, 2, 3, 2,
-    2, 3, 2, 3, 3, 3, 2, 3, 2,
-    2, 3, 2, 2, 3, 2,
-    2, 3, 2, 3, 3, 3, 2, 3, 2,
-    2, 2
   };
 
   extern mask next[COUNT]; // successor moves that should be explored

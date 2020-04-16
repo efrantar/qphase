@@ -59,7 +59,7 @@ namespace solve {
       void prepare(); // setup all threads
       void solve(const cubie::cube& c, std::vector<std::vector<int>>& res); // actual solve
       void finish(); // wait for all threads to shutdown (mostly for clean program exit)
-      void report_sol(searchres& sol, int cost); // report a solution; never call this from the outside
+      void report_sol(searchres& sol); // report a solution; never call this from the outside
 
     void thread(); // search thread
 

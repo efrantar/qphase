@@ -34,10 +34,10 @@ namespace solve {
 
   private:
     void phase1(
-      int depth, int cost, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
+      int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
     ); // phase 1 search; iterates through all solution with exactly `togo` moves
     bool phase2(
-      int depth, int cost, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
+      int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
     ); // phase 2 search; returns once any solution is found
 
   public:
@@ -45,8 +45,8 @@ namespace solve {
       int dir,
       const coordc& cube,
       int p1depth, move::mask d0moves,
-      bool& done, int& maxcost, Engine& solver
-    ) : dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(maxcost), solver(solver) {};
+      bool& done, int& lenlim, Engine& solver
+    ) : dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(lenlim), solver(solver) {};
     void run(); // perform the search
 
   };
@@ -57,17 +57,17 @@ namespace solve {
     edges_depth = 0;
 
     move::mask next = move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
-    phase1(0, 0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next);
+    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next);
   }
 
   void Search::phase1(
-    int depth, int cost, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
+    int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
   ) {
     if (done)
       return;
     if (togo == 0) {
       int tmp = prun::get_precheck(corners, slice, tilt);
-      if (tmp >= lenlim - cost) // phase 2 precheck, only reconstruct edges if successful
+      if (tmp >= lenlim - depth) // phase 2 precheck, only reconstruct edges if successful
         return;
 
       for (int i = edges_depth + 1; i <= depth; i++) {
@@ -77,16 +77,17 @@ namespace solve {
       edges_depth = depth - 1;
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
-      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt), tmp); togo1 < lenlim - cost; togo1++) {
+      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt), tmp); togo1 < lenlim - depth; togo1++) {
         // We don't want to block any moves here as this might cause us to require another full search with
         // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
-        if (phase2(depth, cost, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt]))
+        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt]))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
       return;
     }
 
     depth++;
+    togo--;
     while (next) {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
@@ -97,13 +98,16 @@ namespace solve {
       int tilt1 = tilt::move_coord[tilt][m];
       int dist1 = prun::get_phase1(flip1, slice1, twist1, tilt1);
 
-      if (dist1 > togo - move::cost[m])
+      if (dist1 > togo)
         continue;
 
-      int corners1 = coord::move_corners[corners][m];
-      moves[depth - 1] = m;
-      move::mask next1 = move::p1mask & move::next[m] & tilt::moves[tilt1];
-      phase1(depth, cost + move::cost[m], togo - move::cost[m], flip1, slice1, twist1, corners1, tilt1, next1);
+      // Check inside loop to avoid unnecessary recursion unwinds
+      if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
+        int corners1 = coord::move_corners[corners][m];
+        moves[depth - 1] = m;
+        move::mask next1 = move::p1mask & move::next[m] & tilt::moves[tilt1];
+        phase1(depth, togo, flip1, slice1, twist1, corners1, tilt1, next1);
+      }
     }
 
     // We always want to maintain the maximum number of already reconstructed EDGES coordinates, hence we only
@@ -114,7 +118,7 @@ namespace solve {
   }
 
   bool Search::phase2(
-    int depth, int cost, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
+    int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
   ) {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
@@ -123,7 +127,7 @@ namespace solve {
       searchres sol = {std::vector<int>(depth), dir };
       for (int i = 0; i < depth; i++)
         sol.first[i] = moves[i];
-      solver.report_sol(sol, cost);
+      solver.report_sol(sol);
 
       return true; // we will not find any shorter solutions
     }
@@ -137,10 +141,10 @@ namespace solve {
       int corners1 = coord::move_corners[corners][m];
       int tilt1 = tilt::move_coord[tilt][m];
 
-      if (prun::get_phase2(corners1, udedges21, tilt1) <= togo - move::cost[m]) {
+      if (prun::get_phase2(corners1, udedges21, tilt1) < togo) {
         moves[depth] = m;
         move::mask next1 = move::p2mask & move::next[m] & tilt::moves[tilt1];
-        if (phase2(depth + 1, cost + move::cost[m], togo - move::cost[m], slice1, udedges21, corners1, tilt1, next1))
+        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1))
           return true; // return as soon as we have a solution
       }
     }
@@ -190,7 +194,7 @@ namespace solve {
       threads.push_back(std::thread([&]() { this->thread(); }));
 
     done = false;
-    lenlim = max_len > 0 ? max_len + 1: 100; // only search for strictly shorter solutions than this
+    lenlim = max_len > 0 ? max_len + 1: 50; // only search for strictly shorter solutions than this
     // `sols` is always emptied after a solve
   }
 
@@ -248,7 +252,7 @@ namespace solve {
     std::reverse(res.begin(), res.end()); // return solutions in order of increasing length
   }
 
-  void Engine::report_sol(searchres& sol, int cost) {
+  void Engine::report_sol(searchres& sol) {
     std::lock_guard<std::mutex> lock(sol_mtx);
 
     if (done) // prevent any type of reporting after the solver has terminated (important for threading)
@@ -258,7 +262,7 @@ namespace solve {
     if (sols.size() > n_sols)
       sols.pop();
     if (sols.size() == n_sols) {
-      lenlim = std::min(lenlim, cost); // only search for strictly shorter solutions
+      lenlim = sols.top().first.size(); // only search for strictly shorter solutions
 
       if (lenlim <= max_len) { // already found a solution that is short enough
         done = true; // end searching

@@ -62,7 +62,7 @@ void test_getset(int (*get_coord)(const cubie::cube&), void (*set_coord)(cubie::
 void test_movecoord(
   uint16_t move_coord[][move::COUNT],int n_coord, move::mask moves = move::p1mask | move::p2mask
 ) {
-  moves &= move::bit(move::COUNT_CUBE) - 1; // state moves must not be applied to coords
+  moves &= move::bit(move::COUNT_CUBE) - 1; // tilt moves must not be applied to coords
   for (int coord = 0; coord < n_coord; coord++) {
     for (; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
@@ -162,56 +162,6 @@ void test_sym() {
   test_conj(sym::conj_udedges2, coord::N_UDEDGES2);
 }
 
-/* TODO
-void test_prun() {
-  std::cout << "Testing pruning ..." << std::endl;
-
-  srand(0);
-  int n_moves = std::bitset<64>(move::p1mask).count(); // make sure not to consider B-moves in F5-mode
-
-  for (int i = 0; i < 1000; i++) {
-    int flip = rand() % coord::N_FLIP;
-    int slice = rand() % coord::N_SLICE;
-    int twist = rand() % coord::N_TWIST;
-
-    move::mask next;
-    move::mask next1;
-    move::mask tmp;
-    int togo = prun::get_phase1(flip, slice, twist, 100, tmp);
-
-    int dist = prun::get_phase1(flip, slice, twist, togo, next);
-    next &= move::p1mask;
-
-    next1 = 0;
-    for (int m = 0; m < n_moves; m++) {
-      int flip1 = coord::move_flip[flip][m];
-      int slice1 = coord::move_edges4[slice][m];
-      int twist1 = coord::move_twist[twist][m];
-      if (prun::get_phase1(flip1, slice1, twist1, 100, tmp) < dist)
-        next1 |= move::bit(m);
-    }
-    if (next1 != next)
-      error();
-
-    dist = prun::get_phase1(flip, slice, twist, togo + 1, next);
-    next &= move::p1mask;
-
-    next1 = 0;
-    for (int m = 0; m < n_moves; m++) {
-      int flip1 = coord::move_flip[flip][m];
-      int slice1 = coord::move_edges4[slice][m];
-      int twist1 = coord::move_twist[twist][m];
-      if (prun::get_phase1(flip1, slice1, twist1, 100, tmp) <= dist)
-        next1 |= move::bit(m);
-    }
-    if (next1 != next)
-      error();
-  }
-
-  ok();
-}
- */
-
 bool check(const cubie::cube &c, const std::vector<int>& sol) {
   cubie::cube c1;
   cubie::cube c2;
@@ -226,6 +176,60 @@ bool check(const cubie::cube &c, const std::vector<int>& sol) {
 }
 
 void test_phase1() {
+  std::cout << "Testing pruning ..." << std::endl;
+
+  srand(0);
+  for (int i = 0; i < 1000; i++) {
+    int flip = rand() % coord::N_FLIP;
+    int slice = rand() % coord::N_SLICE;
+    int twist = rand() % coord::N_TWIST;
+    int tilt = rand() % tilt::N_COORD;
+
+    move::mask next;
+    move::mask next1;
+    move::mask tmp;
+    int togo = prun::get_phase1(flip, slice, twist, tilt, 100, tmp);
+
+    int dist = prun::get_phase1(flip, slice, twist, tilt, togo, next);
+    next &= move::p1mask & tilt::moves[tilt];
+
+    next1 = 0;
+    for (move::mask moves = move::p1mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
+      int m = ffsll(moves) - 1;
+
+      int flip1 = coord::move_flip[flip][m];
+      int slice1 = coord::move_edges4[slice][m];
+      int twist1 = coord::move_twist[twist][m];
+      int tilt1 = tilt::move_coord[tilt][m];
+      if (prun::get_phase1(flip1, slice1, twist1, tilt1, 100, tmp) < dist)
+        next1 |= move::bit(m);
+    }
+    if (next1 != next)
+      error();
+
+    dist = prun::get_phase1(flip, slice, twist, tilt, togo + 1, next);
+    next &= move::p1mask & tilt::moves[tilt];
+
+    next1 = 0;
+    for (move::mask moves = move::p1mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
+      int m = ffsll(moves) - 1;
+
+      int flip1 = coord::move_flip[flip][m];
+      int slice1 = coord::move_edges4[slice][m];
+      int twist1 = coord::move_twist[twist][m];
+      int tilt1 = tilt::move_coord[tilt][m];
+      if (prun::get_phase1(flip1, slice1, twist1, tilt1, 100, tmp) <= dist)
+        next1 |= move::bit(m);
+    }
+    if (next1 != next)
+      error();
+  }
+
+  ok();
+}
+
+/*
+void test_phase1() {
   std::cout << "Testing phase 1 table ..." << std::endl;
 
   std::srand(0);
@@ -233,16 +237,16 @@ void test_phase1() {
     int flip = std::rand() % coord::N_FLIP;
     int slice = std::rand() % coord::N_SLICE;
     int twist = std::rand() % coord::N_TWIST;
-    int state = std::rand() % state::N_COORD;
+    int tilt = std::rand() % tilt::N_COORD;
 
-    int dist = prun::get_phase1(flip, slice, twist, state);
+    int dist = prun::get_phase1(flip, slice, twist, tilt);
     bool closer = false; // whether there exists at least one move that gets us closer to the goal
     bool jump = false; // whether any move decreases the distance to goal by more than 1
 
-    for (move::mask moves = move::p1mask & state::moves[state]; moves; moves &= moves - 1) {
+    for (move::mask moves = move::p1mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
-      int state1 = state::move_coord[state][m];
+      int tilt1 = tilt::move_coord[tilt][m];
       int flip1;
       int slice1;
       int twist1;
@@ -256,10 +260,10 @@ void test_phase1() {
         twist1 = twist;
       }
 
-      int delta = prun::get_phase1(flip1, slice1, twist1, state1) - dist;
+      int delta = prun::get_phase1(flip1, slice1, twist1, tilt1) - dist;
       if (delta == -1)
         closer = true;
-      if (delta < -1) // due to how we encode the grip state, there may be deltas > 1 in the table
+      if (delta < -1) // due to how we encode the grip tilt, there may be deltas > 1 in the table
         jump = true;
     }
 
@@ -271,6 +275,7 @@ void test_phase1() {
 
   ok();
 }
+*/
 
 void test_phase2() {
   std::cout << "Testing phase 2 table ..." << std::endl;
@@ -279,19 +284,19 @@ void test_phase2() {
   for (int i = 0; i < 1000; i++) {
     int corners = std::rand() % coord::N_CORNERS;
     int udedges2 = std::rand() % coord::N_UDEDGES2;
-    int state = std::rand() % state::N_COORD;
+    int tilt = std::rand() % tilt::N_COORD;
 
-    int dist = prun::get_phase2(corners, udedges2, state);
+    int dist = prun::get_phase2(corners, udedges2, tilt);
     bool closer = false;
     bool jump = false;
 
     if (dist == 0xff)
       continue;
 
-    for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
+    for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
-      int state1 = state::move_coord[state][m];
+      int tilt1 = tilt::move_coord[tilt][m];
       int corners1;
       int udedges21;
       if (m < move::COUNT_CUBE) {
@@ -302,7 +307,7 @@ void test_phase2() {
         udedges21 = udedges2;
       }
 
-      int delta = prun::get_phase2(corners1, udedges21, state1) - dist;
+      int delta = prun::get_phase2(corners1, udedges21, tilt1) - dist;
       if (delta == -1)
         closer = true;
       if (delta < -1)
@@ -325,18 +330,18 @@ void test_precheck() {
   for (int i = 0; i < 1000; i++) {
     int corners = std::rand() % coord::N_CORNERS;
     int slice2 = std::rand() % coord::N_SLICE2;
-    int state = std::rand() % state::N_COORD;
+    int tilt = std::rand() % tilt::N_COORD;
 
     int slice = coord::slice2_to_slice(slice2);
 
-    int dist = prun::get_precheck(corners, slice, state);
+    int dist = prun::get_precheck(corners, slice, tilt);
     bool closer = false;
     bool jump = false;
 
-    for (move::mask moves = move::p2mask & state::moves[state]; moves; moves &= moves - 1) {
+    for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
       int m = ffsll(moves) - 1;
 
-      int state1 = state::move_coord[state][m];
+      int tilt1 = tilt::move_coord[tilt][m];
       int corners1;
       int slice1;
       if (m < move::COUNT_CUBE) {
@@ -347,7 +352,7 @@ void test_precheck() {
         slice1 = slice;
       }
 
-      int delta = prun::get_precheck(corners1, slice1, state1) - dist;
+      int delta = prun::get_precheck(corners1, slice1, tilt1) - dist;
       if (delta == -1)
         closer = true;
       if (delta < -1)
@@ -368,7 +373,7 @@ int main() {
   move::init();
   coord::init();
   sym::init();
-  state::init();
+  tilt::init();
   prun::init();
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - tick).count() / 1000. << "s" << std::endl;
 
@@ -376,7 +381,6 @@ int main() {
   // test_coord();
   // test_move();
   // test_sym();
-  // test_prun();
 
   test_phase1();
   test_phase2();

@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
     usage();
   }
 
-  std::cout << "This is rob-twophase v2.0; copyright Elias Frantar 2020." << std::endl << std::endl;
+  std::cout << "This is qphase v0.1; copyright Elias Frantar 2020." << std::endl << std::endl;
   init();
   solve::Engine solver(n_threads, tlim, n_sols, max_len, n_splits);
   warmup(solver, n_warmups);

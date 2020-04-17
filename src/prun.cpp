@@ -11,12 +11,46 @@ namespace prun {
   const std::string SAVE = "twophase.tbl";
   const int EMPTY = 0xff;
 
-  uint8_t *phase1;
+  uint64_t *phase1;
   uint8_t *phase2;
   uint8_t *precheck;
 
+  move::mask remap[2][12][1 << 16];
+  move::mask remap_tilt[2][sym::COUNT_SUB][1 << 4];
+
+  int permute(int mask, int *perm, int len, int step) {
+    int permuted = 0;
+    for (int i = 0; i < len; i++)
+      permuted |= ((mask >> step * perm[i]) & ((1 << step) - 1)) << step * i;
+    return permuted;
+  }
+
+  void init_base() {
+    for (int eff = 0; eff < 12; eff++) {
+      for (int enc = 0; enc < 1 << 16; enc++) {
+        int tmp = permute(enc >> 1, sym::eff_mperm[sym::eff_nshift(eff)], 15, 1);
+        remap[0][eff][enc] = move::mask(enc & 1 ? 0 : ~tmp & 0x7fff) << 15 * sym::eff_shift(eff);
+        remap[1][eff][enc] = move::mask(enc & 1 ? ~tmp & 0x7fff : 0x7fff) << 15 * sym::eff_shift(eff);
+      }
+    }
+
+    for (int s = 0; s < sym::COUNT_SUB; s++) {
+      for (int enc = 0; enc < 1 << 4; enc++) {
+        int tmp = permute(enc, tilt::eff_mperm[s], move::COUNT_TILT, 2);
+        for (int delta : {0, 1}) {
+          remap_tilt[delta][s][enc] = 0;
+          for (int i = move::COUNT_TILT - 1; i >= 0; i--) {
+            remap_tilt[delta][s][enc] <<= 1;
+            remap_tilt[delta][s][enc] |= ((tmp >> 2 * i) & 0x3) <= delta;
+          }
+          remap_tilt[delta][s][enc] <<= move::COUNT_CUBE;
+        }
+      }
+    }
+  }
+
   void init_phase1() {
-    phase1 = new uint8_t[N_FS1TWIST];
+    phase1 = new uint64_t[N_FS1TWIST];
     std::fill(phase1, phase1 + N_FS1TWIST, EMPTY);
 
     // Note that SLICE is not 0 at the end of phase 1
@@ -41,6 +75,7 @@ namespace prun {
 
             if (phase1[coord] == dist) {
               count++;
+              int deltas[move::COUNT];
 
               for (move::mask moves = move::p1mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
                 int m = ffsll(moves) - 1;
@@ -68,21 +103,48 @@ namespace prun {
                 }
                 tilt1 = tilt::coord_rep[stilt1]; // we need to apply self-symmetries to the conjugated raw tilt
 
-                if (phase1[coord1] <= dist)
+                if (phase1[coord1] != EMPTY) {
+                  deltas[m] = (phase1[coord1] & 0xff) - dist;
                   continue;
+                }
                 phase1[coord1] = dist1;
-                coord1 -= tilt::N_COORD_SYM * twist1 + stilt1; // only TWIST and STILT parts change below
+                deltas[m] = 1;
+                coord1 -= tilt::N_COORD_SYM * twist1 + stilt1; // only TWIST and Stilt parts change below
 
                 int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
                 for (int s = 1; selfs > 0; s++) { // bit 0 is always on
                   if (selfs & 1) {
                     int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_twist[twist1][s] + tilt::cored_coord[tilt1][s];
-                    if (phase1[coord2] > dist1)
+                    if (phase1[coord2] == EMPTY)
                       phase1[coord2] = dist1;
                   }
                   selfs >>= 1;
                 }
               }
+
+              /* Encode from left to right to preserve indexing of moves */
+              uint64_t prun = 0;
+
+              for (int m = move::COUNT - 1; m >= move::COUNT_CUBE; m--)
+                prun = (prun << 2) | (deltas[m] + 1);
+              for (int ax = 30; ax >= 0; ax -= 15) {
+                bool away = false;
+                for (int i = ax; i < ax + 15; i++) {
+                  if (deltas[i] != 0) {
+                    away = deltas[i] > 0;
+                    break; // stop immediately once we found a value != 0
+                  }
+                }
+
+                int tmp = 0;
+                for (int i = (ax + 15) - 1; i >= ax; i--)
+                  tmp = (tmp | (deltas[i] + !away)) << 1;
+                tmp |= away;
+
+                prun = (prun << 16) | tmp;
+              }
+
+              phase1[coord] |= prun << 8;
             }
 
             coord++;
@@ -219,10 +281,35 @@ namespace prun {
     }
   }
 
+  int get_phase1(int flip, int slice, int twist, int tilt, int togo, move::mask& next) {
+    int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
+    int s = sym::coord_s(tmp);
+    int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
+    uint64_t prun = phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]];
+
+    int dist = prun & 0xff;
+    int delta = togo - dist;
+
+    // `delta` < 0 case can never happen during a real search
+    if (delta > 1)
+      next = move::p1mask; // all moves are possible
+    else {
+      prun >>= 8; // get rid of dist
+      next = 0;
+      for (int ax = 0; ax < 3; ax++) {
+        next |= remap[delta][sym::effect[s][ax]][prun & 0xffff];
+        prun >>= 16;
+      }
+      next |= remap_tilt[delta][s][prun & 0xf];
+    }
+
+    return dist;
+  }
+
   int get_phase1(int flip, int slice, int twist, int tilt) {
     int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
     int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
-    return phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]];
+    return phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]] & 0xff;
   }
 
   int get_phase2(int corners, int udedges2, int tilt) {
@@ -238,6 +325,8 @@ namespace prun {
   }
 
   bool init(bool file) {
+    init_base();
+
     if (!file) {
       init_phase1();
       init_phase2();
@@ -254,7 +343,7 @@ namespace prun {
       init_precheck();
 
       f = fopen(SAVE.c_str(), "wb");
-      if (fwrite(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)
+      if (fwrite(phase1, sizeof(uint64_t), N_FS1TWIST, f) != N_FS1TWIST)
         err = 1;
       if (fwrite(phase2, sizeof(uint8_t), N_CORNUD2, f) != N_CORNUD2)
         err = 1;
@@ -263,10 +352,10 @@ namespace prun {
       if (err)
         remove(SAVE.c_str()); // delete file if there was some error writing it
     } else {
-      phase1 = new uint8_t[N_FS1TWIST];
+      phase1 = new uint64_t[N_FS1TWIST];
       phase2 = new uint8_t[N_CORNUD2];
       precheck = new uint8_t[N_CSLICE2];
-      if (fread(phase1, sizeof(uint8_t), N_FS1TWIST, f) != N_FS1TWIST)
+      if (fread(phase1, sizeof(uint64_t), N_FS1TWIST, f) != N_FS1TWIST)
         err = 1;
       if (fread(phase2, sizeof(uint8_t), N_CORNUD2, f) != N_CORNUD2)
         err = 1;

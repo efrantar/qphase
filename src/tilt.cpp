@@ -13,7 +13,8 @@ namespace tilt {
   int cored_coord[N_COORD][sym::COUNT_SUB];
 
   move::mask moves[N_COORD];
-  int conj_move[move::COUNT_STATE][sym::COUNT];
+  int conj_move[move::COUNT_TILT][sym::COUNT];
+  int eff_mperm[sym::COUNT_SUB][move::COUNT_TILT];
   int move_coord[N_COORD][move::COUNT];
 
   // All legal face permutations
@@ -125,6 +126,22 @@ namespace tilt {
         mul(c, MOVES[m - move::COUNT_CUBE], c1);
         move_coord[coord][m] = get_coord(c1);
       }
+    }
+
+    for (int m = 0; m < move::COUNT_TILT; m++) {
+      for (int s = 0; s < sym::COUNT; s++) {
+        mul(sym_cubes[s], MOVES[m], tmp);
+        mul(tmp, sym_cubes[sym::inv[s]], c);
+        for (int conj = 0; conj < move::COUNT_TILT; conj++) {
+          if (c == MOVES[conj])
+            conj_move[m][s] = conj;
+        }
+      }
+    }
+
+    for (int s = 0; s < sym::COUNT_SUB; s++) {
+      for (int m = 0; m < move::COUNT_TILT; m++)
+        eff_mperm[s][m] = conj_move[m][sym::inv[s]];
     }
   }
 

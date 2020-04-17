@@ -12,8 +12,8 @@ namespace move {
   using mask = uint64_t;
 
   const int COUNT_CUBE = 45;
-  const int COUNT_STATE = 2;
-  const int COUNT = COUNT_CUBE + COUNT_STATE;
+  const int COUNT_TILT = 2;
+  const int COUNT = COUNT_CUBE + COUNT_TILT;
 
   const int U1 = 0;
   const int U2 = 1;

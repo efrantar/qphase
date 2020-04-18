@@ -56,7 +56,9 @@ namespace solve {
     dedges[0] = cube.dedges;
     edges_depth = 0;
 
-    move::mask next = move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
+    move::mask next;
+    prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
+    next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
     phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next);
   }
 
@@ -96,16 +98,14 @@ namespace solve {
       int slice1 = coord::move_edges4[slice][m];
       int twist1 = coord::move_twist[twist][m];
       int tilt1 = tilt::move_coord[tilt][m];
-      int dist1 = prun::get_phase1(flip1, slice1, twist1, tilt1);
-
-      if (dist1 > togo)
-        continue;
+      move::mask next1;
+      int dist1 = prun::get_phase1(flip1, slice1, twist1, tilt1, togo, next1);
 
       // Check inside loop to avoid unnecessary recursion unwinds
       if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
         int corners1 = coord::move_corners[corners][m];
         moves[depth - 1] = m;
-        move::mask next1 = move::p1mask & move::next[m] & tilt::moves[tilt1];
+        next1 &= move::p1mask & move::next[m] & tilt::moves[tilt1];
         phase1(depth, togo, flip1, slice1, twist1, corners1, tilt1, next1);
       }
     }
@@ -219,7 +219,8 @@ namespace solve {
       dirs[dir].corners = coord::get_corners(tmp2);
       dirs[dir].tilt = DIR_TILTS[dir];
 
-      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt);
+      move::mask tmp; // simply ignore, makes no sense anyways without proper `togo`
+      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt, 100, tmp);
       splits[dir] = 0;
     }
 

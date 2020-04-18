@@ -13,9 +13,8 @@ namespace tilt {
   int cored_coord[N_COORD][sym::COUNT_SUB];
 
   move::mask moves[N_COORD];
-  int conj_move[move::COUNT_TILT][sym::COUNT];
-  int eff_mperm[sym::COUNT_SUB][move::COUNT_TILT];
   int move_coord[N_COORD][move::COUNT];
+  bool cored_flip[N_COORD][sym::COUNT_SUB];
 
   // All legal face permutations
   const int FPERMS[][6] = {
@@ -98,6 +97,14 @@ namespace tilt {
           }
         }
         cored_coord[coord][s] = coord_cls[get_coord(c1)];
+        cored_flip[coord][s] = c1.fperm[1] % 3 == c.fperm[2] % 3 && c1.fperm[2] % 3 == c.fperm[1] % 3;
+      }
+    }
+    for (int coord = 0; coord < N_COORD; coord++) {
+      for (int s = 0; s < sym::COUNT_SUB; s++) {
+        // Correct for robot symmetry reduction
+        if (FPERMS[coord][1] % 3 != FPERMS[coord_rep[cored_coord[coord][s]]][1] % 3)
+          cored_flip[coord][s] ^= true;
       }
     }
 
@@ -126,22 +133,6 @@ namespace tilt {
         mul(c, MOVES[m - move::COUNT_CUBE], c1);
         move_coord[coord][m] = get_coord(c1);
       }
-    }
-
-    for (int m = 0; m < move::COUNT_TILT; m++) {
-      for (int s = 0; s < sym::COUNT; s++) {
-        mul(sym_cubes[s], MOVES[m], tmp);
-        mul(tmp, sym_cubes[sym::inv[s]], c);
-        for (int conj = 0; conj < move::COUNT_TILT; conj++) {
-          if (c == MOVES[conj])
-            conj_move[m][s] = conj;
-        }
-      }
-    }
-
-    for (int s = 0; s < sym::COUNT_SUB; s++) {
-      for (int m = 0; m < move::COUNT_TILT; m++)
-        eff_mperm[s][m] = conj_move[m][sym::inv[s]];
     }
   }
 

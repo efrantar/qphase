@@ -22,7 +22,7 @@ namespace prun {
   extern uint8_t *precheck;
 
   int get_phase1(int flip, int slice, int twist, int tilt, int togo, move::mask& next);
-  int get_phase1(int flip, int slice, int twist, int state);
+  // int get_phase1(int flip, int slice, int twist, int state);
   int get_phase2(int corners, int udedges2, int state);
   int get_precheck(int corners, int slice, int state);
 

@@ -16,7 +16,7 @@ namespace prun {
   uint8_t *precheck;
 
   move::mask remap[2][12][1 << 16];
-  move::mask remap_tilt[2][sym::COUNT_SUB][1 << 4];
+  move::mask remap_tilt[2][2][1 << 4];
 
   int permute(int mask, int *perm, int len, int step) {
     int permuted = 0;
@@ -34,16 +34,13 @@ namespace prun {
       }
     }
 
-    for (int s = 0; s < sym::COUNT_SUB; s++) {
+    for (bool flip : {false, true}) {
       for (int enc = 0; enc < 1 << 4; enc++) {
-        int tmp = permute(enc, tilt::eff_mperm[s], move::COUNT_TILT, 2);
         for (int delta : {0, 1}) {
-          remap_tilt[delta][s][enc] = 0;
-          for (int i = move::COUNT_TILT - 1; i >= 0; i--) {
-            remap_tilt[delta][s][enc] <<= 1;
-            remap_tilt[delta][s][enc] |= ((tmp >> 2 * i) & 0x3) <= delta;
-          }
-          remap_tilt[delta][s][enc] <<= move::COUNT_CUBE;
+          remap_tilt[delta][flip][enc] = 0;
+          remap_tilt[delta][flip][enc] |= ((enc >> 2 * flip) & 0x3) <= delta;
+          remap_tilt[delta][flip][enc] |= (((enc >> 2 * (1 - flip)) & 0x3) <= delta) << 1;
+          remap_tilt[delta][flip][enc] <<= move::COUNT_CUBE;
         }
       }
     }
@@ -300,17 +297,19 @@ namespace prun {
         next |= remap[delta][sym::effect[s][ax]][prun & 0xffff];
         prun >>= 16;
       }
-      next |= remap_tilt[delta][s][prun & 0xf];
+      next |= remap_tilt[delta][tilt::cored_flip[tilt][s]][prun & 0xf];
     }
 
     return dist;
   }
 
+  /*
   int get_phase1(int flip, int slice, int twist, int tilt) {
     int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
     int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
     return phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]] & 0xff;
   }
+   */
 
   int get_phase2(int corners, int udedges2, int tilt) {
     int tmp = sym::corners_sym[corners];

@@ -28,9 +28,9 @@ namespace tilt {
   extern int cored_coord[N_COORD][sym::COUNT_SUB]; // conj w.r.t. to cube-sym + reduction w.r.t. robot-sym
 
   extern move::mask moves[N_COORD];
-  extern int conj_move[move::COUNT_TILT][sym::COUNT];
-  extern int eff_mperm[sym::COUNT_SUB][move::COUNT_TILT];
   extern int move_coord[N_COORD][move::COUNT];
+  // TODO: merge with cored_coord
+  extern bool cored_flip[N_COORD][sym::COUNT_SUB]; // whether conj + red flips the tilt moves
 
   void mul(const cube& c1, const cube& c2, cube& into);
   bool operator==(const cube& c1, const cube& c2);

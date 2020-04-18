@@ -35,7 +35,7 @@ namespace sym {
   extern uint16_t corners_selfs[N_CORNERS];
 
   inline int eff_shift(int eff) { return eff >> 2; }
-  inline int eff_nshift(int eff) { return eff & 0x3; }
+  inline int eff_nshift(int eff) { return eff & 0x3; } // everything but shift
   inline int coord_c(int coord) { return coord / COUNT_SUB; }
   inline int coord_s(int coord) { return coord % COUNT_SUB; }
 

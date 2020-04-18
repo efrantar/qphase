@@ -99,7 +99,7 @@ namespace sym {
     int moves[][4] = {
       {U1, U3, D1, D3},
       {R1, R3, L1, L3},
-      {F1, F3, F1, F3}
+      {F1, F3, B1, B3}
     };
     for (int s = 0; s < COUNT_SUB; s++) {
       for (int ax = 0; ax < 3; ax++) {

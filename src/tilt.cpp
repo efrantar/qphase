@@ -1,10 +1,10 @@
-#include "state.h"
+#include "tilt.h"
 
 #include <algorithm>
 #include <vector>
 #include "move.h"
 
-namespace state {
+namespace tilt {
 
   using namespace move;
 
@@ -13,18 +13,7 @@ namespace state {
   int cored_coord[N_COORD][sym::COUNT_SUB];
 
   move::mask moves[N_COORD];
-  int conj_move[move::COUNT_STATE][sym::COUNT];
-  int eff_mperm[sym::COUNT_SUB][move::COUNT_STATE];
   int move_coord[N_COORD][move::COUNT];
-
-  // Multiply gripper states
-  const int G_MUL[6][6] = {
-    {G_NEUTRAL,    G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_BLOCKED_FB},
-    {G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_FB, G_PARTIAL_RL, G_BLOCKED_FB},
-    {G_PARTIAL_FB, G_PARTIAL_RL, G_PARTIAL_FB, G_BLOCKED_RL, G_PARTIAL_FB},
-    {G_BLOCKED_RL, G_PARTIAL_RL, -1,           G_NEUTRAL,    -1          },
-    {G_BLOCKED_FB, -1,           G_PARTIAL_FB, -1,           G_NEUTRAL   }
-  };
 
   // All legal face permutations
   const int FPERMS[][6] = {
@@ -54,40 +43,30 @@ namespace state {
     {B, L, D, F, R, U}
   };
 
-  // Flip grip axis
-  const int G_FLIP[] = {G_NEUTRAL, G_PARTIAL_FB, G_PARTIAL_RL, G_BLOCKED_FB, G_BLOCKED_RL};
-
   // Cubes representing the face permutation of cube symmetries
   cube sym_cubes[sym::COUNT];
-
-  // Effect of moves on grip (for RL-axis); note that a half-turn can always be executed in partial manner
-  const int GMOVES[] = {
-    G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL, G_PARTIAL_RL,
-    G_BLOCKED_RL, G_PARTIAL_RL, G_BLOCKED_RL, G_PARTIAL_RL, G_NEUTRAL, G_PARTIAL_RL, G_BLOCKED_RL, G_PARTIAL_RL, G_BLOCKED_RL
-  };
 
   void init() {
     cube c = ID_CUBE;
     cube c1;
     cube tmp;
 
-    // The symmetry class w.r.t. the robot is defined by the axis in the UD-slot and the gripper state if the other
-    // two axes are in order or the axis-flipped gripper state if they are not.
+    // The symmetry class is simply given by the axis the robot cannot turn in this tilt
     for (int coord = N_COORD - 1; coord >= 0; coord--) { // the rep should always be the smallest value
       set_coord(c, coord);
-      coord_cls[coord] = N_GRIP * (c.fperm[0] % 3) + ((c.fperm[1] % 3 > c.fperm[2] % 3) ? G_FLIP[c.grip] : c.grip);
+      coord_cls[coord] = c.fperm[0] % 3;
       coord_rep[coord_cls[coord]] = coord;
     }
 
     // Note that the following conjugation w.r.t. cube symmetries is only correct in terms of the axes permutation
-    // (but not the full face ordering); this is however sufficient here.
+    // (but not the full face ordering), which is however all we need at this point.
 
     // The cube symmetries which affect the permutation of the axes
     cube u4 = {
-      {U, F, L, D, B, R}, G_NEUTRAL
+      {U, F, L, D, B, R}
     };
     cube urf3 = {
-      {F, U, R, B, D, L}, G_NEUTRAL
+      {F, U, R, B, D, L}
     };
 
     c = ID_CUBE;
@@ -104,11 +83,11 @@ namespace state {
       }
     }
 
-    // Here we want to conjugate w.r.t. to the cube symmetry, i.e. permute the axes in the reference frame of the
-    // robot; note that such a conjugation should not affect the grip
+    // Here we want to conjugate w.r.t. to the cube symmetry, i.e. permute the axes in the reference frame of the robot
     for (int coord = 0; coord < N_COORD; coord++) {
       set_coord(c, coord);
-      cored_coord[coord][0] = coord_cls[coord];
+
+      cored_coord[coord][0] = coord_cls[coord] << 1;
       for (int s = 1; s < sym::COUNT_SUB; s++) {
         for (int i = 0; i < face::color::COUNT; i++) {
           for (int j = 0; j < face::color::COUNT; j++) {
@@ -116,24 +95,24 @@ namespace state {
               c1.fperm[j] = sym_cubes[s].fperm[i];
           }
         }
-        c1.grip = c.grip;
-
-        cored_coord[coord][s] = coord_cls[get_coord(c1)];
+        cored_coord[coord][s] = coord_cls[get_coord(c1)] << 1;
+        cored_coord[coord][s] |= c1.fperm[1] % 3 == c.fperm[2] % 3 && c1.fperm[2] % 3 == c.fperm[1] % 3;
+      }
+    }
+    for (int coord = 0; coord < N_COORD; coord++) {
+      for (int s = 0; s < sym::COUNT_SUB; s++) {
+        // Correct for robot symmetry reduction
+        if (FPERMS[coord][1] % 3 != FPERMS[coord_rep[cored_cls(cored_coord[coord][s])]][1] % 3)
+          cored_coord[coord][s] ^= true;
       }
     }
 
     std::fill(moves, moves + N_COORD, 0);
     for (int coord = 0; coord < N_COORD; coord++) {
       set_coord(c, coord);
-      if (c.grip == G_BLOCKED_RL) // if we are blocked we can only move that axis
-        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[1] % 3)) | (move::mask(0b0101) << move::COUNT_CUBE);
-      else if (c.grip == G_BLOCKED_FB)
-        moves[coord] = (move::mask(0x7fff) << 15 * (c.fperm[2] % 3)) | (move::mask(0b1010) << move::COUNT_CUBE);
-      else {
-        moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
-        moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
-        moves[coord] |= move::mask(0xf) << move::COUNT_CUBE;
-      }
+      moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
+      moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
+      moves[coord] |= move::mask(0x3) << move::COUNT_CUBE;
     }
 
     for (int coord = 0; coord < N_COORD; coord++) {
@@ -143,10 +122,8 @@ namespace state {
       for (int m = 0; m < move::COUNT_CUBE; m++) {
         if (move::in(m, moves[coord])) {
           for (int ax = 1; ax < 3; ax++) {
-            if (c.fperm[ax] % 3 == m / 15) { // figure out where axis is located
-              c1.grip = G_MUL[c.grip][GMOVES[m % 15] != G_NEUTRAL ? GMOVES[m % 15] + (ax - 1) : G_NEUTRAL];
+            if (c.fperm[ax] % 3 == m / 15) // figure out where axis is located
               move_coord[coord][m] = get_coord(c1);
-            }
           }
         } else
           move_coord[coord][m] = -1;
@@ -161,7 +138,6 @@ namespace state {
   void mul(const cube& c1, const cube& c2, cube& into) {
     for (int i = 0; i < face::color::COUNT; i++)
       into.fperm[i] = c1.fperm[c2.fperm[i]];
-    into.grip = G_MUL[c1.grip][c2.grip];
   }
 
   bool operator==(const cube& c1, const cube& c2) {
@@ -169,16 +145,15 @@ namespace state {
   }
 
   int get_coord(const cube& c) {
-    for (int tilt = 0; tilt < N_TILT; tilt++) {
+    for (int tilt = 0; tilt < N_COORD; tilt++) {
       if (std::equal(c.fperm, c.fperm + face::color::COUNT, FPERMS[tilt]))
-        return N_GRIP * tilt + c.grip;
+        return tilt;
     }
     return -1;
   }
 
   void set_coord(cube& c, int coord) {
-    std::copy(FPERMS[coord / N_GRIP], FPERMS[coord / N_GRIP] + face::color::COUNT, c.fperm);
-    c.grip = coord % N_GRIP;
+    std::copy(FPERMS[coord], FPERMS[coord] + face::color::COUNT, c.fperm);
   }
 
 }

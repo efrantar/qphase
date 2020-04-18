@@ -30,7 +30,7 @@ void init() {
   move::init();
   coord::init();
   sym::init();
-  state::init();
+  tilt::init();
   if (prun::init(true)) {
     std::cout << "Error." << std::endl;
     exit(1);
@@ -58,7 +58,7 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
-// TODO: incorporate state
+// TODO: incorporate tilt
 bool check(const cubie::cube &c, const std::vector<int>& sol) {
   cubie::cube c1;
   cubie::cube c2;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
     usage();
   }
 
-  std::cout << "This is rob-twophase v2.0; copyright Elias Frantar 2020." << std::endl << std::endl;
+  std::cout << "This is qphase v0.1; copyright Elias Frantar 2020." << std::endl << std::endl;
   init();
   solve::Engine solver(n_threads, tlim, n_sols, max_len, n_splits);
   warmup(solver, n_warmups);

@@ -228,7 +228,7 @@ namespace coord {
     for (int coord = 0; coord < n_coord; coord++) {
       set_coord(c1, coord);
 
-      if (phase2) { // UDEDGES2 is only defined for phase 2 moves; make sure to ignore state moves
+      if (phase2) { // UDEDGES2 is only defined for phase 2 moves; make sure to ignore tilt moves
         for (move::mask moves = move::p2mask & (move::bit(move::COUNT_CUBE) - 1); moves; moves &= moves - 1) {
           int m = ffsll(moves) - 1;
           mul(c1, move::cubes[m], c2);

@@ -85,7 +85,7 @@ namespace prun {
                 int coord1;
                 if (m >= move::COUNT_CUBE) {
                   // Don't forget that we are symmetry reducing w.r.t. FSLICE1 and thus need to conjugate here
-                  stilt1 = tilt::cored_coord[tilt1][sym::coord_s(sym::fslice1_sym[fslice1])];
+                  stilt1 = tilt::cored_cls(tilt::cored_coord[tilt1][sym::coord_s(sym::fslice1_sym[fslice1])]);
                   fs1sym1 = fs1sym;
                   twist1 = twist;
                   coord1 = (coord - stilt) + stilt1;
@@ -95,7 +95,7 @@ namespace prun {
                   int tmp = sym::fslice1_sym[fslice11];
                   twist1 = sym::conj_twist[coord::move_twist[twist][m]][sym::coord_s(tmp)];
                   fs1sym1 = sym::coord_c(tmp);
-                  stilt1 = tilt::cored_coord[tilt1][sym::coord_s(tmp)];
+                  stilt1 = tilt::cored_cls(tilt::cored_coord[tilt1][sym::coord_s(tmp)]);
                   coord1 = tilt::N_COORD_SYM * (coord::N_TWIST * fs1sym1 + twist1) + stilt1;
                 }
                 tilt1 = tilt::coord_rep[stilt1]; // we need to apply self-symmetries to the conjugated raw tilt
@@ -111,7 +111,7 @@ namespace prun {
                 int selfs = sym::fslice1_selfs[fs1sym1] >> 1;
                 for (int s = 1; selfs > 0; s++) { // bit 0 is always on
                   if (selfs & 1) {
-                    int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_twist[twist1][s] + tilt::cored_coord[tilt1][s];
+                    int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_twist[twist1][s] + tilt::cored_cls(tilt::cored_coord[tilt1][s]);
                     if (phase1[coord2] == EMPTY)
                       phase1[coord2] = dist1;
                   }
@@ -186,7 +186,7 @@ namespace prun {
                 int udedges21;
                 int coord1;
                 if (m >= move::COUNT_CUBE) {
-                  stilt1 = tilt::cored_coord[tilt1][sym::coord_s(sym::corners_sym[corners])];
+                  stilt1 = tilt::cored_cls(tilt::cored_coord[tilt1][sym::coord_s(sym::corners_sym[corners])]);
                   csym1 = csym;
                   udedges21 = udedges2;
                   coord1 = (coord - stilt) + stilt1;
@@ -196,7 +196,7 @@ namespace prun {
                   int tmp = sym::corners_sym[corners1];
                   udedges21 = sym::conj_udedges2[udedges21][sym::coord_s(tmp)];
                   csym1 = sym::coord_c(tmp);
-                  stilt1 = tilt::cored_coord[tilt1][sym::coord_s(tmp)];
+                  stilt1 = tilt::cored_cls(tilt::cored_coord[tilt1][sym::coord_s(tmp)]);
                   coord1 = tilt::N_COORD_SYM * (coord::N_UDEDGES2 * csym1 + udedges21) + stilt1;
                 }
                 tilt1 = tilt::coord_rep[stilt1];
@@ -209,7 +209,7 @@ namespace prun {
                 int selfs = sym::corners_selfs[csym1] >> 1;
                 for (int s = 1; selfs > 0; s++) {
                   if (selfs & 1) {
-                    int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_udedges2[udedges21][s] + tilt::cored_coord[tilt1][s];
+                    int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_udedges2[udedges21][s] + tilt::cored_cls(tilt::cored_coord[tilt1][s]);
                     if (phase2[coord2] > dist1)
                       phase2[coord2] = dist1;
                   }
@@ -282,7 +282,8 @@ namespace prun {
     int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
     int s = sym::coord_s(tmp);
     int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
-    uint64_t prun = phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]];
+    int tmp1 = tilt::cored_coord[tilt][sym::coord_s(tmp)];
+    uint64_t prun = phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_cls(tmp1)];
 
     int dist = prun & 0xff;
     int delta = togo - dist;
@@ -297,7 +298,7 @@ namespace prun {
         next |= remap[delta][sym::effect[s][ax]][prun & 0xffff];
         prun >>= 16;
       }
-      next |= remap_tilt[delta][tilt::cored_flip[tilt][s]][prun & 0xf];
+      next |= remap_tilt[delta][tilt::cored_flip(tmp1)][prun & 0xf];
     }
 
     return dist;
@@ -314,7 +315,7 @@ namespace prun {
   int get_phase2(int corners, int udedges2, int tilt) {
     int tmp = sym::corners_sym[corners];
     int cornud = coord::N_UDEDGES2 * sym::coord_c(tmp) + sym::conj_udedges2[udedges2][sym::coord_s(tmp)];
-    return phase2[tilt::N_COORD_SYM * cornud + tilt::cored_coord[tilt][sym::coord_s(tmp)]];
+    return phase2[tilt::N_COORD_SYM * cornud + tilt::cored_cls(tilt::cored_coord[tilt][sym::coord_s(tmp)])];
   }
 
   int get_precheck(int corners, int slice, int tilt) {

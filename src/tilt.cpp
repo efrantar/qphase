@@ -14,7 +14,6 @@ namespace tilt {
 
   move::mask moves[N_COORD];
   int move_coord[N_COORD][move::COUNT];
-  bool cored_flip[N_COORD][sym::COUNT_SUB];
 
   // All legal face permutations
   const int FPERMS[][6] = {
@@ -88,7 +87,7 @@ namespace tilt {
     for (int coord = 0; coord < N_COORD; coord++) {
       set_coord(c, coord);
 
-      cored_coord[coord][0] = coord_cls[coord];
+      cored_coord[coord][0] = coord_cls[coord] << 1;
       for (int s = 1; s < sym::COUNT_SUB; s++) {
         for (int i = 0; i < face::color::COUNT; i++) {
           for (int j = 0; j < face::color::COUNT; j++) {
@@ -96,15 +95,15 @@ namespace tilt {
               c1.fperm[j] = sym_cubes[s].fperm[i];
           }
         }
-        cored_coord[coord][s] = coord_cls[get_coord(c1)];
-        cored_flip[coord][s] = c1.fperm[1] % 3 == c.fperm[2] % 3 && c1.fperm[2] % 3 == c.fperm[1] % 3;
+        cored_coord[coord][s] = coord_cls[get_coord(c1)] << 1;
+        cored_coord[coord][s] |= c1.fperm[1] % 3 == c.fperm[2] % 3 && c1.fperm[2] % 3 == c.fperm[1] % 3;
       }
     }
     for (int coord = 0; coord < N_COORD; coord++) {
       for (int s = 0; s < sym::COUNT_SUB; s++) {
         // Correct for robot symmetry reduction
-        if (FPERMS[coord][1] % 3 != FPERMS[coord_rep[cored_coord[coord][s]]][1] % 3)
-          cored_flip[coord][s] ^= true;
+        if (FPERMS[coord][1] % 3 != FPERMS[coord_rep[cored_cls(cored_coord[coord][s])]][1] % 3)
+          cored_coord[coord][s] ^= true;
       }
     }
 

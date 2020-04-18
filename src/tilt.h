@@ -29,14 +29,15 @@ namespace tilt {
 
   extern move::mask moves[N_COORD];
   extern int move_coord[N_COORD][move::COUNT];
-  // TODO: merge with cored_coord
-  extern bool cored_flip[N_COORD][sym::COUNT_SUB]; // whether conj + red flips the tilt moves
 
   void mul(const cube& c1, const cube& c2, cube& into);
   bool operator==(const cube& c1, const cube& c2);
 
   int get_coord(const cube& c);
   void set_coord(cube& c, int coord);
+
+  inline int cored_cls(int cored) { return cored >> 1; }
+  inline bool cored_flip(int cored) { return cored & 1; } // whether conj + red flips the tilt moves
 
   void init();
 

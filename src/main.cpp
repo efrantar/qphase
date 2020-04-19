@@ -17,7 +17,7 @@ const std::string BENCH_FILE = "bench.cubes";
 
 void usage() {
   std::cout << "Usage: ./twophase "
-    << "[-c] [-l MAX_LEN = 1] [-m MILLIS = 10] [-n N_SOLS = 1] [-s N_SPLITS = 1] [-t N_THREADS = 1] [-w N_WARMUPS = 0]"
+    << "[-l MAX_LEN = 1] [-m MILLIS = 10] [-n N_SOLS = 1] [-s N_SPLITS = 1] [-t N_THREADS = 1] [-w N_WARMUPS = 0]"
   << std::endl;
   exit(1);
 }
@@ -91,16 +91,12 @@ int main(int argc, char *argv[]) {
   int n_sols = 1;
   int max_len = -1;
   int n_splits = 1;
-  bool compress = false;
   int n_warmups = 0;
 
   try {
     int opt;
-    while ((opt = getopt(argc, argv, "cl:m:n:s:t:w:")) != -1) {
+    while ((opt = getopt(argc, argv, "l:m:n:s:t:w:")) != -1) {
       switch (opt) {
-        case 'c':
-          compress = true;
-          break;
         case 'l':
           max_len = std::stoi(optarg);
           break;
@@ -250,12 +246,8 @@ int main(int argc, char *argv[]) {
 
       for (std::vector<int>& sol : sols) {
         int len = sol.size(); // always print uncompressed length
-        if (compress) {
-          // std::cout << move::compress(sol) << " "; TODO
-        } else {
-          for (int m : sol)
-            std::cout << move::names[m] << " ";
-        }
+        for (int m : sol)
+          std::cout << move::names[m] << " ";
         std::cout << "(" << len << ")" << std::endl;
       }
     }

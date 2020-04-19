@@ -147,4 +147,33 @@ namespace move {
     }
   }
 
+  int translate(int m, const int fperm[6]) {
+    if (m > move::COUNT_CUBE) // no translation of tilt-moves
+      return m;
+
+    int ax = m / 15;
+    int i = m % 15;
+
+    if (i < 6) { // simple move
+      int f = 2 * ax + i / 3;
+      int cnt = i % 3;
+      int f1 = fperm[f];
+      int ax1 = f / 2;
+      return 15 * ax1 + (f1 - 2 * ax1) + cnt;
+    } else { // axial move
+      int f1 = 2 * ax;
+      int f2 = f1 + 1;
+      int cnt1 = (i - 6) / 3;
+      int cnt2 = (i - 6) % 3;
+      int f11 = fperm[f1];
+      int f21 = fperm[f2];
+      if (f11 > f21) {
+        std::swap(f11, f21);
+        std::swap(cnt1, cnt2);
+      }
+      int ax1 = f11 / 2;
+      return (15 * ax1 + 6) + (3 * cnt1 + cnt2);
+    }
+  }
+
 }

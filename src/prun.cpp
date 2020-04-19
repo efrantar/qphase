@@ -18,7 +18,7 @@ namespace prun {
   move::mask remap[2][12][1 << 16];
   move::mask remap_tilt[2][2][1 << 4];
 
-  int permute(int mask, int *perm, int len, int step) {
+  int permute(int mask, const int *perm, int len, int step) {
     int permuted = 0;
     for (int i = 0; i < len; i++)
       permuted |= ((mask >> step * perm[i]) & ((1 << step) - 1)) << step * i;

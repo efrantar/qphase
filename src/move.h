@@ -87,6 +87,8 @@ namespace move {
   extern mask p1mask; // phase 1 moves
   extern mask p2mask; // phase 2 moves
 
+  int translate(int m, const int fperm[6]);
+
   inline mask bit(int m) {
     return mask(1) << m;
   }

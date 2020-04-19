@@ -6,7 +6,9 @@
 #include <queue>
 #include <utility>
 #include <thread>
-# include "move.h"
+
+#include "move.h"
+#include "tilt.h"
 
 namespace solve {
 
@@ -36,7 +38,7 @@ namespace solve {
     int tlim; // search for this amount of milliseconds
 
     coordc dirs[N_DIRS]; // search directions
-    move::mask masks[move::COUNT]; // split masks
+    move::mask masks[tilt::N_COORD_SYM][move::COUNT]; // split masks
     int depths[N_DIRS]; // current search depths per direction
     int splits[N_DIRS]; // current search splits per direction
 

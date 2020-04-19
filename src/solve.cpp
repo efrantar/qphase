@@ -1,13 +1,11 @@
 #include "solve.h"
 
 #include <algorithm>
+#include <bitset>
 #include <strings.h>
 #include <thread>
-#include <iostream>
 #include "prun.h"
 #include "sym.h"
-
-// TODO: better task splitting
 
 namespace solve {
 
@@ -156,9 +154,18 @@ namespace solve {
     int n_threads, int tlim,
     int n_sols, int max_len, int n_splits
   ) : n_threads(n_threads), tlim(tlim), n_sols(n_sols), max_len(max_len), n_splits(n_splits) {
-    int tmp = (move::COUNT + n_splits - 1) / n_splits; // ceil to make sure that we always include all moves
-    for (int i = 0; i < n_splits; i++)
-      masks[i] = (move::mask(1) << tmp) - 1 << tmp * i;
+    for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++) {
+      int n_moves = std::bitset<64>(tilt::moves[tilt::coord_rep[stilt]]).count();
+      int tmp = (n_moves + n_splits - 1) / n_splits; // ceil to make sure that we always include all moves
+      move::mask moves = tilt::moves[tilt::coord_rep[stilt]];
+      for (int i = 0; i < n_splits; i++) {
+        masks[stilt][i] = 0;
+        for (int j = 0; j < tmp && moves; j++) {
+          masks[stilt][i] |= move::bit(ffsll(moves) - 1);
+          moves &= moves - 1;
+        }
+      }
+    }
     done = true; // make sure that the first `prepare()` will actually do something
   }
 
@@ -179,7 +186,7 @@ namespace solve {
       }
       job_mtx.unlock();
 
-      Search search(mindir, dirs[mindir], togo, masks[split], done, lenlim, *this);
+      Search search(mindir, dirs[mindir], togo, masks[tilt::coord_cls[dirs[mindir].tilt]][split], done, lenlim, *this);
       search.run();
     } while (!done); // we should never actually get to the truly optimal depth anyways in general
   }

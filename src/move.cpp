@@ -148,8 +148,14 @@ namespace move {
   }
 
   int translate(int m, const int fperm[6]) {
-    if (m > move::COUNT_CUBE) // no translation of tilt-moves
+    if (m >= move::COUNT_CUBE) // no translation of tilt-moves
       return m;
+
+    // We use different face ordering for the moves and the face-perm definitions
+    int remap[] = {0, 2, 4, 1, 3, 5};
+    int ifperm[6];
+    for (int i = 0; i < 6; i++)
+      ifperm[remap[fperm[i]]] = remap[i];
 
     int ax = m / 15;
     int i = m % 15;
@@ -157,7 +163,7 @@ namespace move {
     if (i < 6) { // simple move
       int f = 2 * ax + i / 3;
       int cnt = i % 3;
-      int f1 = fperm[f];
+      int f1 = ifperm[f];
       int ax1 = f / 2;
       return 15 * ax1 + (f1 - 2 * ax1) + cnt;
     } else { // axial move
@@ -165,8 +171,8 @@ namespace move {
       int f2 = f1 + 1;
       int cnt1 = (i - 6) / 3;
       int cnt2 = (i - 6) % 3;
-      int f11 = fperm[f1];
-      int f21 = fperm[f2];
+      int f11 = ifperm[f1];
+      int f21 = ifperm[f2];
       if (f11 > f21) {
         std::swap(f11, f21);
         std::swap(cnt1, cnt2);

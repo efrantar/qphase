@@ -172,59 +172,6 @@ namespace grip {
         }
       }
     }
-
-    bool visited[128];
-    std::fill(visited, visited + 128, false);
-    std::queue<int> q;
-    q.push(1);
-
-    cube c;
-    cube tmp;
-
-    while (q.size()) {
-      int stateset = q.front();
-      q.pop();
-      if (visited[stateset])
-        continue;
-      visited[stateset] = true;
-
-      for (int m = 15; m < N_MOVES; m++) {
-        int stateset1 = 0;
-
-        for (int state = 0; state < state::COUNT; state++) {
-          if ((stateset & (1 << state)) == 0)
-            continue;
-          set_state(c, state);
-
-          if (m < move::COUNT_CUBE) {
-            int ax = m / 15 - 1;
-            if (c.blocked[2 * ax] == 1 && c.blocked[2 * ax + 1] == 1)
-              continue;
-          } else if (m >= move::COUNT) {
-            int f = m - move::COUNT;
-            if (c.blocked[f])
-              continue;
-          }
-
-          for (int r = 0; r < regrip::COUNT; r++) {
-            if (move_cubes[m][r] == INVALID)
-              continue;
-
-            mul(c, move_cubes[m][r], tmp);
-            if (valid(tmp))
-              stateset1 |= 1 << get_state(tmp);
-          }
-        }
-
-        q.push(stateset1);
-      }
-    }
-
-    int count = 0;
-    for (bool b : visited)
-      count += b;
-    std::cout << count << "\n";
-
   }
 
 }

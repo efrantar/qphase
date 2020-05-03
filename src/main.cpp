@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
       ).count() / 1000. << "ms" << std::endl;
 
       for (std::vector<int>& sol : sols) {
-        int len = sol.size(); // always print uncompressed length
+        int len = sol.size();
         for (int m : sol)
           std::cout << move::names[m] << " ";
         std::cout << "(" << len << ")" << std::endl;

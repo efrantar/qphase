@@ -4,13 +4,14 @@
 #include <bitset>
 #include <strings.h>
 #include <thread>
+#include <iostream>
 #include "prun.h"
 #include "sym.h"
 
 namespace solve {
 
   const int DIR_TILTS[] = {
-    0, 1, 2, 0, 1, 2
+    0, 5, 4, 0, 5, 4
   }; // inversion does not change axis permutation
 
   class Search {
@@ -229,6 +230,10 @@ namespace solve {
       move::mask tmp; // simply ignore, makes no sense anyways without proper `togo`
       depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt, 100, tmp);
       splits[dir] = 0;
+
+      // TODO: properly implement inverse search
+      if (dir & 1)
+        depths[dir] = 1000;
     }
 
     job_mtx.unlock(); // start solving
@@ -246,13 +251,34 @@ namespace solve {
       const searchres& sol = sols.top();
       res[i].resize(sol.first.size());
 
-      int rot = sym::ROT * (sol.second / 2);
       for (int j = 0; j < res[i].size(); j++) // undo rotation
+        std::cout << move::names[sol.first[j]] << " ";
+      std::cout << "\n";
+
+      int rot = sym::ROT * (sol.second >> 1);
+
+      std::cout << rot << "\n";
+
+      for (int j = 0; j < res[i].size(); j++) { // undo rotation
         res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
+        if (rot == sym::ROT && res[i][j] >= move::COUNT_CUBE) // we need to flip tilt axes for 1 rotation
+          res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
+      }
       if (sol.second & 1) { // undo inversion
         for (int j = 0; j < res[i].size(); j++)
           res[i][j] = res[i][j] < move::COUNT_CUBE ? move::inv[res[i][j]] : res[i][j];
         std::reverse(res[i].begin(), res[i].end());
+      }
+
+      for (int j = 0; j < res[i].size(); j++) // undo rotation
+        std::cout << move::names[res[i][j]] << " ";
+      std::cout << "\n";
+
+      int tilt = 0;
+      for (int j = 0; j < res[i].size(); j++) {
+        int tmp = res[i][j];
+        res[i][j] = tilt::trans_move[tilt][res[i][j]];
+        tilt = tilt::move_coord[tilt][tmp];
       }
 
       sols.pop();

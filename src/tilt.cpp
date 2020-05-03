@@ -22,8 +22,8 @@ namespace tilt {
     {U, B, R, D, F, L},
     {U, L, B, D, R, F},
     {U, F, L, D, B, R},
-    {R, U, B, L, D, F},
-    {F, U, R, B, D, L},
+    {R, U, B, L, D, F}, //
+    {F, U, R, B, D, L}, //
     {L, U, F, R, D, B},
     {B, U, L, F, D, R},
     {R, F, U, L, B, D},

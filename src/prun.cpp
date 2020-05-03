@@ -304,14 +304,6 @@ namespace prun {
     return dist;
   }
 
-  /*
-  int get_phase1(int flip, int slice, int twist, int tilt) {
-    int tmp = sym::fslice1_sym[coord::fslice1(flip, coord::slice_to_slice1(slice))];
-    int fs1twist = coord::N_TWIST * sym::coord_c(tmp) + sym::conj_twist[twist][sym::coord_s(tmp)];
-    return phase1[tilt::N_COORD_SYM * fs1twist + tilt::cored_coord[tilt][sym::coord_s(tmp)]] & 0xff;
-  }
-   */
-
   int get_phase2(int corners, int udedges2, int tilt) {
     int tmp = sym::corners_sym[corners];
     int cornud = coord::N_UDEDGES2 * sym::coord_c(tmp) + sym::conj_udedges2[udedges2][sym::coord_s(tmp)];

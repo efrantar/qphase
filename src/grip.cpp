@@ -1,18 +1,26 @@
+#include "grip.h"
+
+#include <iostream>
+#include <queue>
 #include "move.h"
 
 namespace grip {
 
-  const int N_STATE = 7;
+  // Gripper states; faces mentioned in the name are not blocked
+  namespace state {
+    const int COUNT = 7;
 
-  // Faces mentioned in the name are not blocked
-  const int S_RLFB = 0;
-  const int S_RFB = 1;
-  const int S_LFB = 2;
-  const int S_FB = 3;
-  const int S_RLB = 4;
-  const int S_RLF = 5;
-  const int S_RL = 6;
+    const int RLFB = 0;
+    const int RFB = 1;
+    const int LFB = 2;
+    const int FB = 3;
+    const int RLB = 4;
+    const int RLF = 5;
+    const int RL = 6;
+  }
+  using namespace state;
 
+  // Regrip options
   namespace regrip {
     const int COUNT = 8;
 
@@ -27,24 +35,30 @@ namespace grip {
   }
   using namespace regrip;
 
+  const int N_STATESETS = 1 << state::COUNT;
+  const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
+
+
+  // Datastructure for tracking the cube state
   struct cube {
-    bool blocked[4];
+    int blocked[4];
   };
 
-  const cube INVALID = {1, 0, 1, 0};
+  const cube INVALID = {-1, -1, -1, -1}; // this is why we defined `blocked` as an integer
 
+  // Compress/uncompress GRIP coordinate
   const int enc_state[16] = {
-    S_RLFB, S_RLF, S_RLB, S_RL, S_RFB, -1, -1, -1, S_LFB, -1, -1, -1, S_FB, -1, -1, -1
+    RLFB, RLF, RLB, RL, RFB, -1, -1, -1, LFB, -1, -1, -1, FB, -1, -1, -1
   };
-  const int dec_state[N_STATE] = {
+  const int dec_state[state::COUNT] = {
     0, 4, 8, 12, 2, 1, 3
   };
 
-  cube MOVE_CUBES[move::COUNT_CUBE][regrip::COUNT] = {
+  // Cube moves + regrips
+  cube move_cubes[N_MOVES][regrip::COUNT];
 
-  };
-
-  const cube MOVE_CUBES1[15][regrip::COUNT] = {
+  // Regrips for RL-axis only
+  const cube MOVE_CUBES[15][regrip::COUNT] = {
     {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R
     {{0, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R2
     {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R'
@@ -62,14 +76,22 @@ namespace grip {
     {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L')
   };
 
+  // Tilt moves + regrips
   const cube TILT_CUBES[move::COUNT_TILT][regrip::COUNT] = {
     {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }, // tRL
     {{0, 0, 1, 1}, {1, 1, 1, 1}, {1, 0, 1, 1}, {0, 1, 1, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }  // tFB
   };
 
+  // Hard regrips
   const cube REGRIP_CUBES[4][regrip::COUNT] = {
-
+    {{0, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 1, 1}}, // rR
+    {{0, 0, 0, 0}, {1, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 1}}, // rL
+    {{0, 0, 0, 0}, {0, 0, 0, 1}, {1, 0, 0, 0}, {0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 0, 1}, {0, 1, 0, 1}, {1, 1, 0, 1}}, // rF
+    {{0, 0, 0, 0}, {0, 0, 1, 0}, {1, 0, 0, 0}, {0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {0, 1, 1, 0}, {1, 1, 1, 0}}  // rB
   };
+
+  int nextset[N_STATESETS][move::COUNT];
+  move::mask setmoves[N_STATESETS];
 
   bool valid(const cube& c) {
     return !((c.blocked[0] || c.blocked[1]) && (c.blocked[2] || c.blocked[3]));
@@ -93,6 +115,116 @@ namespace grip {
       c.blocked[i] = state & 1;
       state >>= 1;
     }
+  }
+
+  bool operator==(const cube& c1, const cube& c2) {
+    return std::equal(c1.blocked, c1.blocked + 4, c2.blocked);
+  }
+
+  void init() {
+    for (int m = 15; m < move::COUNT + 4; m++) {
+      for (int r = 0; r < regrip::COUNT; r++) {
+        if (m < move::COUNT_CUBE) {
+          move_cubes[m][r] = MOVE_CUBES[m % 15][r];
+          if (m >= 30) {
+            std::swap(move_cubes[m][r].blocked[0], move_cubes[m][r].blocked[2]);
+            std::swap(move_cubes[m][r].blocked[1], move_cubes[m][r].blocked[3]);
+          }
+        } else if (m < move::COUNT)
+          move_cubes[m][r] = TILT_CUBES[m - move::COUNT_CUBE][r];
+        else
+          move_cubes[m][r] = REGRIP_CUBES[m - move::COUNT_CUBE][r];
+      }
+    }
+
+    cube c;
+    cube tmp;
+
+    for (int stateset = 0; stateset < N_STATESETS; stateset++) {
+      for (int state = 0; state < state::COUNT; state++) {
+        if ((stateset & (1 << state)) == 0)
+          continue;
+        set_state(c, state);
+
+        for (int m = 15; m < move::COUNT; m++) {
+          if (m < move::COUNT_CUBE) {
+            int ax = m / 15 - 1;
+            if (c.blocked[2 * ax] == 1 && c.blocked[2 * ax + 1] == 1)
+              continue;
+          } else if (m >= move::COUNT) {
+            int f = m - move::COUNT;
+            if (c.blocked[f])
+              continue;
+          }
+
+          bool possible = false;
+          for (int r = 0; r < regrip::COUNT; r++) {
+            if (move_cubes[m][r] == INVALID)
+              continue;
+            mul(c, move_cubes[m][r], tmp);
+            if (valid(tmp)) {
+              nextset[stateset][m] |= 1 << get_state(tmp);
+              possible = true;
+            }
+          }
+          if (possible)
+            setmoves[stateset] |= move::bit(m);
+        }
+      }
+    }
+
+    bool visited[128];
+    std::fill(visited, visited + 128, false);
+    std::queue<int> q;
+    q.push(1);
+
+    cube c;
+    cube tmp;
+
+    while (q.size()) {
+      int stateset = q.front();
+      q.pop();
+      if (visited[stateset])
+        continue;
+      visited[stateset] = true;
+
+      for (int m = 15; m < N_MOVES; m++) {
+        int stateset1 = 0;
+
+        for (int state = 0; state < state::COUNT; state++) {
+          if ((stateset & (1 << state)) == 0)
+            continue;
+          set_state(c, state);
+
+          if (m < move::COUNT_CUBE) {
+            int ax = m / 15 - 1;
+            if (c.blocked[2 * ax] == 1 && c.blocked[2 * ax + 1] == 1)
+              continue;
+          } else if (m >= move::COUNT) {
+            int f = m - move::COUNT;
+            if (c.blocked[f])
+              continue;
+          }
+
+          for (int r = 0; r < regrip::COUNT; r++) {
+            if (move_cubes[m][r] == INVALID)
+              continue;
+
+            mul(c, move_cubes[m][r], tmp);
+            if (valid(tmp))
+              stateset1 |= 1 << get_state(tmp);
+          }
+        }
+
+        q.push(stateset1);
+      }
+    }
+
+    int count = 0;
+    for (bool b : visited)
+      count += b;
+    std::cout << count << "\n";
+
   }
 
 }

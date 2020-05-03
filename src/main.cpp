@@ -8,6 +8,7 @@
 #include "cubie.h"
 #include "coord.h"
 #include "face.h"
+#include "grip.h"
 #include "move.h"
 #include "prun.h"
 #include "solve.h"
@@ -86,6 +87,8 @@ double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vec
 }
 
 int main(int argc, char *argv[]) {
+  grip::init();
+
   int n_threads = 1;
   int tlim = 10;
   int n_sols = 1;

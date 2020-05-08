@@ -164,8 +164,8 @@ namespace move {
       int f = 2 * ax + i / 3;
       int cnt = i % 3;
       int f1 = ifperm[f];
-      int ax1 = f / 2;
-      return 15 * ax1 + (f1 - 2 * ax1) + cnt;
+      int ax1 = f1 / 2;
+      return 15 * ax1 + 3 * (f1 - 2 * ax1) + cnt;
     } else { // axial move
       int f1 = 2 * ax;
       int f2 = f1 + 1;

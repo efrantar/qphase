@@ -15,6 +15,7 @@ namespace tilt {
   move::mask moves[N_COORD];
   int move_coord[N_COORD][move::COUNT];
   int trans_move[N_COORD][move::COUNT];
+  int itrans_move[N_COORD][move::COUNT];
 
   // All legal face permutations
   const int FPERMS[][6] = {
@@ -136,8 +137,10 @@ namespace tilt {
     }
 
     for (int coord = 0; coord < N_COORD; coord++) {
-      for (int m = 0; m < move::COUNT; m++)
+      for (int m = 0; m < move::COUNT; m++) {
         trans_move[coord][m] = move::translate(m, FPERMS[coord]);
+        itrans_move[coord][trans_move[coord][m]] = m;
+      }
     }
   }
 

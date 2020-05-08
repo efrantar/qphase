@@ -32,6 +32,7 @@ void init() {
   coord::init();
   sym::init();
   tilt::init();
+  grip::init();
   if (prun::init(true)) {
     std::cout << "Error." << std::endl;
     exit(1);
@@ -59,17 +60,21 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
-// TODO: incorporate tilt
 bool check(const cubie::cube &c, const std::vector<int>& sol) {
   cubie::cube c1;
   cubie::cube c2;
+  int tilt = 0;
 
   c1 = c;
   for (int m : sol) {
-    if (m < move::COUNT_CUBE) {
-      cubie::mul(c1, move::cubes[m], c2);
+    int m1 = tilt::itrans_move[tilt][m];
+    if (!move::in(m1, tilt::moves[tilt]))
+      return false;
+    if (m1 < move::COUNT_CUBE) {
+      cubie::mul(c1, move::cubes[m1], c2);
       std::swap(c1, c2);
     }
+    tilt = tilt::move_coord[tilt][m1];
   }
 
   return c1 == cubie::SOLVED_CUBE;
@@ -87,8 +92,6 @@ double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vec
 }
 
 int main(int argc, char *argv[]) {
-  grip::init();
-
   int n_threads = 1;
   int tlim = 10;
   int n_sols = 1;

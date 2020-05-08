@@ -3,6 +3,7 @@
 #include <iostream>
 #include <queue>
 #include "move.h"
+#include "tilt.h"
 
 namespace grip {
 

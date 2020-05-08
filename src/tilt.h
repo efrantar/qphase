@@ -30,6 +30,7 @@ namespace tilt {
   extern move::mask moves[N_COORD];
   extern int move_coord[N_COORD][move::COUNT];
   extern int trans_move[N_COORD][move::COUNT];
+  extern int itrans_move[N_COORD][move::COUNT];
 
   void mul(const cube& c1, const cube& c2, cube& into);
   bool operator==(const cube& c1, const cube& c2);

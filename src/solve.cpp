@@ -251,14 +251,7 @@ namespace solve {
       const searchres& sol = sols.top();
       res[i].resize(sol.first.size());
 
-      for (int j = 0; j < res[i].size(); j++) // undo rotation
-        std::cout << move::names[sol.first[j]] << " ";
-      std::cout << "\n";
-
       int rot = sym::ROT * (sol.second >> 1);
-
-      std::cout << rot << "\n";
-
       for (int j = 0; j < res[i].size(); j++) { // undo rotation
         res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
         if (rot == sym::ROT && res[i][j] >= move::COUNT_CUBE) // we need to flip tilt axes for 1 rotation
@@ -269,10 +262,6 @@ namespace solve {
           res[i][j] = res[i][j] < move::COUNT_CUBE ? move::inv[res[i][j]] : res[i][j];
         std::reverse(res[i].begin(), res[i].end());
       }
-
-      for (int j = 0; j < res[i].size(); j++) // undo rotation
-        std::cout << move::names[res[i][j]] << " ";
-      std::cout << "\n";
 
       int tilt = 0;
       for (int j = 0; j < res[i].size(); j++) {

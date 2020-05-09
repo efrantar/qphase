@@ -39,7 +39,6 @@ namespace grip {
   const int N_STATESETS = 1 << state::COUNT;
   const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
 
-
   // Datastructure for tracking the cube state
   struct cube {
     int blocked[4];
@@ -84,7 +83,8 @@ namespace grip {
   };
 
   // Hard regrips
-  const cube REGRIP_CUBES[4][regrip::COUNT] = {
+  const cube REGRIP_CUBES[5][regrip::COUNT] = {
+    {INVALID,      INVALID,      INVALID,      INVALID,      INVALID,      INVALID,      INVALID,      INVALID     }, // joint dummy regrip
     {{0, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 1, 1}}, // rR
     {{0, 0, 0, 0}, {1, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 1}}, // rL
     {{0, 0, 0, 0}, {0, 0, 0, 1}, {1, 0, 0, 0}, {0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 0, 1}, {0, 1, 0, 1}, {1, 1, 0, 1}}, // rF
@@ -122,8 +122,24 @@ namespace grip {
     return std::equal(c1.blocked, c1.blocked + 4, c2.blocked);
   }
 
+  int regrips(const std::vector<int>& sol) {
+    int regrips = 0;
+
+    int stateset = 1;
+    for (int m : sol) {
+      if (nextset[stateset][m])
+        stateset = nextset[stateset][m];
+      else {
+        stateset = nextset[stateset][move::G];
+        regrips++;
+      }
+    }
+
+    return regrips;
+  }
+
   void init() {
-    for (int m = 15; m < move::COUNT + 4; m++) {
+    for (int m = 15; m < N_MOVES; m++) {
       for (int r = 0; r < regrip::COUNT; r++) {
         if (m < move::COUNT_CUBE) {
           move_cubes[m][r] = MOVE_CUBES[m % 15][r];
@@ -131,10 +147,10 @@ namespace grip {
             std::swap(move_cubes[m][r].blocked[0], move_cubes[m][r].blocked[2]);
             std::swap(move_cubes[m][r].blocked[1], move_cubes[m][r].blocked[3]);
           }
-        } else if (m < move::COUNT)
+        } else if (m < move::COUNT - move::COUNT_GRIP)
           move_cubes[m][r] = TILT_CUBES[m - move::COUNT_CUBE][r];
         else
-          move_cubes[m][r] = REGRIP_CUBES[m - move::COUNT_CUBE][r];
+          move_cubes[m][r] = REGRIP_CUBES[m - (move::COUNT - move::COUNT_GRIP)][r];
       }
     }
 
@@ -147,13 +163,13 @@ namespace grip {
           continue;
         set_state(c, state);
 
-        for (int m = 15; m < move::COUNT; m++) {
+        for (int m = 15; m < N_MOVES; m++) {
           if (m < move::COUNT_CUBE) {
             int ax = m / 15 - 1;
             if (c.blocked[2 * ax] == 1 && c.blocked[2 * ax + 1] == 1)
               continue;
-          } else if (m >= move::COUNT) {
-            int f = m - move::COUNT;
+          } else if (m >= move::COUNT - move::COUNT_GRIP) {
+            int f = m - (move::COUNT - move::COUNT_GRIP);
             if (c.blocked[f])
               continue;
           }
@@ -171,6 +187,17 @@ namespace grip {
           if (possible)
             setmoves[stateset] |= move::bit(m);
         }
+      }
+
+      for (int m = move::COUNT; m < N_MOVES; m++)
+        nextset[stateset][move::G] |= nextset[stateset][m];
+      setmoves[stateset] |= (setmoves[stateset] & (move::mask(0xf) << move::COUNT)) ? move::bit(move::G) : 0;
+    }
+
+    for (int stateset = 1; stateset < N_STATESETS; stateset++) {
+      for (int m = 15; m < N_MOVES; m++) {
+        if (bool(nextset[stateset][m]) != move::in(m, setmoves[stateset]))
+          std::cout << "Error.\n";
       }
     }
   }

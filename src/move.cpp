@@ -19,12 +19,12 @@ namespace move {
     U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3,
     R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3,
     F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3,
-    TRL, TFB
+    TRL, TFB, G
   };
   const int moves2[] = {
     U1, U2, U3, D1, D2, D3, U1D1, U1D2, U1D3, U2D1, U2D2, U2D3, U3D1, U3D2, U3D3,
     R2, L2, R2L2, F2, B2, F2B2,
-    TRL, TFB
+    TRL, TFB, G
   };
 
   const std::vector<int> blocked[] = {
@@ -74,7 +74,8 @@ namespace move {
     {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3},
     {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3},
     {R1, R2, R3, L1, L2, L3, R1L1, R1L2, R1L3, R2L1, R2L2, R2L3, R3L1, R3L2, R3L3, TRL, TFB},
-    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3, TRL, TFB}
+    {F1, F2, F3, B1, B2, B3, F1B1, F1B2, F1B3, F2B1, F2B2, F2B3, F3B1, F3B2, F3B3, TRL, TFB},
+    {}
   };
 
   void init() {
@@ -148,7 +149,7 @@ namespace move {
   }
 
   int translate(int m, const int fperm[6]) {
-    if (m >= move::COUNT_CUBE) // no translation of tilt-moves
+    if (m >= move::COUNT_CUBE) // no translation of tilt-moves or regrips
       return m;
 
     // We use different face ordering for the moves and the face-perm definitions

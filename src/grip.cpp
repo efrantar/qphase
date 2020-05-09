@@ -3,41 +3,8 @@
 #include <iostream>
 #include <queue>
 #include "move.h"
-#include "tilt.h"
 
 namespace grip {
-
-  // Gripper states; faces mentioned in the name are not blocked
-  namespace state {
-    const int COUNT = 7;
-
-    const int RLFB = 0;
-    const int RFB = 1;
-    const int LFB = 2;
-    const int FB = 3;
-    const int RLB = 4;
-    const int RLF = 5;
-    const int RL = 6;
-  }
-  using namespace state;
-
-  // Regrip options
-  namespace regrip {
-    const int COUNT = 8;
-
-    const int _      = 0; // no regripping whatsoever
-    const int A2     = 1; // regrip parallel face
-    const int B1     = 2; // regrip lower indexed orthogonal face
-    const int B2     = 3; // regrip higher indexed orthogonal face
-    const int B1B2   = 4; // regrip both orthogonal faces
-    const int A2B1   = 5; // regrip parallel and lower orthogonal
-    const int A2B2   = 6; // regrip parallel and higher orthogonal
-    const int A2B1B2 = 7; // triple regrip of all but the current face (which must be in neutral)
-  }
-  using namespace regrip;
-
-  const int N_STATESETS = 1 << state::COUNT;
-  const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
 
   // Datastructure for tracking the cube state
   struct cube {
@@ -92,7 +59,6 @@ namespace grip {
   };
 
   int nextset[N_STATESETS][move::COUNT];
-  move::mask setmoves[N_STATESETS];
 
   bool valid(const cube& c) {
     return !((c.blocked[0] || c.blocked[1]) && (c.blocked[2] || c.blocked[3]));
@@ -174,31 +140,18 @@ namespace grip {
               continue;
           }
 
-          bool possible = false;
           for (int r = 0; r < regrip::COUNT; r++) {
             if (move_cubes[m][r] == INVALID)
               continue;
             mul(c, move_cubes[m][r], tmp);
-            if (valid(tmp)) {
+            if (valid(tmp))
               nextset[stateset][m] |= 1 << get_state(tmp);
-              possible = true;
-            }
           }
-          if (possible)
-            setmoves[stateset] |= move::bit(m);
         }
       }
 
       for (int m = move::COUNT; m < N_MOVES; m++)
         nextset[stateset][move::G] |= nextset[stateset][m];
-      setmoves[stateset] |= (setmoves[stateset] & (move::mask(0xf) << move::COUNT)) ? move::bit(move::G) : 0;
-    }
-
-    for (int stateset = 1; stateset < N_STATESETS; stateset++) {
-      for (int m = 15; m < N_MOVES; m++) {
-        if (bool(nextset[stateset][m]) != move::in(m, setmoves[stateset]))
-          std::cout << "Error.\n";
-      }
     }
   }
 

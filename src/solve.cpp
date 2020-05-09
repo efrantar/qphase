@@ -5,6 +5,8 @@
 #include <strings.h>
 #include <thread>
 #include <iostream>
+
+#include "grip.h"
 #include "prun.h"
 #include "sym.h"
 
@@ -33,10 +35,10 @@ namespace solve {
 
   private:
     void phase1(
-      int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
+      int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next, int stateset
     ); // phase 1 search; iterates through all solution with exactly `togo` moves
     bool phase2(
-      int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
+      int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next, int stateset
     ); // phase 2 search; returns once any solution is found
 
   public:
@@ -58,11 +60,11 @@ namespace solve {
     move::mask next;
     prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
     next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
-    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next);
+    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, 1);
   }
 
   void Search::phase1(
-    int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next
+    int depth, int togo, int flip, int slice, int twist, int corners, int tilt, move::mask next, int stateset
   ) {
     if (done)
       return;
@@ -81,7 +83,7 @@ namespace solve {
       for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt), tmp); togo1 < lenlim - depth; togo1++) {
         // We don't want to block any moves here as this might cause us to require another full search with
         // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
-        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt]))
+        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt], stateset))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
       return;
@@ -92,6 +94,10 @@ namespace solve {
     while (next) {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
+
+      int stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
+      if (!stateset1)
+        continue;
 
       int flip1 = coord::move_flip[flip][m];
       int slice1 = coord::move_edges4[slice][m];
@@ -105,7 +111,7 @@ namespace solve {
         int corners1 = coord::move_corners[corners][m];
         moves[depth - 1] = m;
         next1 &= move::p1mask & move::next[m] & tilt::moves[tilt1];
-        phase1(depth, togo, flip1, slice1, twist1, corners1, tilt1, next1);
+        phase1(depth, togo, flip1, slice1, twist1, corners1, tilt1, next1, stateset1);
       }
     }
 
@@ -117,7 +123,7 @@ namespace solve {
   }
 
   bool Search::phase2(
-    int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next
+    int depth, int togo, int slice, int udedges2, int corners, int tilt, move::mask next, int stateset
   ) {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
@@ -135,6 +141,10 @@ namespace solve {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
 
+      int stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
+      if (!stateset1)
+        continue;
+
       int slice1 = coord::move_edges4[slice][m];
       int udedges21 = coord::move_udedges2[udedges2][m];
       int corners1 = coord::move_corners[corners][m];
@@ -143,7 +153,7 @@ namespace solve {
       if (prun::get_phase2(corners1, udedges21, tilt1) < togo) {
         moves[depth] = m;
         move::mask next1 = move::p2mask & move::next[m] & tilt::moves[tilt1];
-        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1))
+        if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1, stateset1))
           return true; // return as soon as we have a solution
       }
     }

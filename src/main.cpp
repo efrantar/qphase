@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
         int len = sol.size();
         for (int m : sol)
           std::cout << move::names[m] << " ";
-        std::cout << "(" << len << " + " << grip::regrips(sol) << ")" << std::endl;
+        std::cout << "(" << len << ")" << std::endl;
       }
     }
   }

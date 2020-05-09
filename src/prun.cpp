@@ -16,7 +16,7 @@ namespace prun {
   uint8_t *precheck;
 
   move::mask remap[2][12][1 << 16];
-  move::mask remap_tilt[2][2][1 << 4];
+  move::mask remap_ncube[2][2][1 << 4];
 
   int permute(int mask, const int *perm, int len, int step) {
     int permuted = 0;
@@ -37,11 +37,12 @@ namespace prun {
     for (bool flip : {false, true}) {
       for (int enc = 0; enc < 1 << 4; enc++) {
         for (int delta : {0, 1}) {
-          remap_tilt[delta][flip][enc] = 0;
-          remap_tilt[delta][flip][enc] |= ((enc >> 2 * flip) & 0x3) <= delta;
-          remap_tilt[delta][flip][enc] |= (((enc >> 2 * (1 - flip)) & 0x3) <= delta) << 1;
-          remap_tilt[delta][flip][enc] <<= move::COUNT_CUBE;
+          remap_ncube[delta][flip][enc] = 0;
+          remap_ncube[delta][flip][enc] |= ((enc >> 2 * flip) & 0x3) <= delta;
+          remap_ncube[delta][flip][enc] |= (((enc >> 2 * (1 - flip)) & 0x3) <= delta) << 1;
+          remap_ncube[delta][flip][enc] <<= move::COUNT_CUBE;
         }
+        remap_ncube[1][flip][enc] |= move::bit(move::G); // regrips are only allowed for delta > 0
       }
     }
   }
@@ -298,7 +299,7 @@ namespace prun {
         next |= remap[delta][sym::effect[s][ax]][prun & 0xffff];
         prun >>= 16;
       }
-      next |= remap_tilt[delta][tilt::cored_flip(tmp1)][prun & 0xf];
+      next |= remap_ncube[delta][tilt::cored_flip(tmp1)][prun & 0xf];
     }
 
     return dist;

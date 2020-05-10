@@ -114,7 +114,7 @@ namespace tilt {
       set_coord(c, coord);
       moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[1] % 3);
       moves[coord] |= move::mask(0x7fff) << 15 * (c.fperm[2] % 3);
-      moves[coord] |= move::mask(0x3) << move::COUNT_CUBE;
+      moves[coord] |= move::mask(0xf) << move::COUNT_CUBE;
     }
 
     for (int coord = 0; coord < N_COORD; coord++) {
@@ -130,10 +130,11 @@ namespace tilt {
         } else
           move_coord[coord][m] = -1;
       }
-      for (int m = move::COUNT_CUBE; m < move::COUNT; m++) {
+      for (int m = move::COUNT_CUBE; m < move::COUNT - move::COUNT_GRIP; m++) {
         mul(c, MOVES[m - move::COUNT_CUBE], c1);
         move_coord[coord][m] = get_coord(c1);
       }
+      move_coord[coord][move::G] = coord;
     }
 
     for (int coord = 0; coord < N_COORD; coord++) {

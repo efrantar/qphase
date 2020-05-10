@@ -33,11 +33,9 @@
 
 # Project specific
 qphase
-twophase
-twophase.tbl
-tables
+qphase.tbl
 .depend
 .idea
 CMakeLists.txt
 cmake-build-debug
-twophase1.tbl
+

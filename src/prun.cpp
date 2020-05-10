@@ -8,7 +8,7 @@ namespace prun {
 
   using namespace tilt;
 
-  const std::string SAVE = "twophase.tbl";
+  const std::string SAVE = "qphase.tbl";
   const int EMPTY = 0xff;
 
   uint64_t *phase1;

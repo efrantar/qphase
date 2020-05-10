@@ -58,7 +58,7 @@ namespace grip {
     {{0, 0, 0, 0}, {0, 0, 1, 0}, {1, 0, 0, 0}, {0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {0, 1, 1, 0}, {1, 1, 1, 0}}  // rB
   };
 
-  int nextset[N_STATESETS][move::COUNT];
+  int nextset[N_STATESETS][N_MOVES];
 
   bool valid(const cube& c) {
     return !((c.blocked[0] || c.blocked[1]) && (c.blocked[2] || c.blocked[3]));

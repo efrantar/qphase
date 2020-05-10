@@ -38,7 +38,7 @@ namespace grip {
   const int N_STATESETS = 1 << state::COUNT;
   const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
 
-  extern int nextset[N_STATESETS][move::COUNT];
+  extern int nextset[N_STATESETS][N_MOVES];
 
   int regrips(const std::vector<int>& sol);
   void init();

@@ -89,8 +89,10 @@ namespace solve {
       return;
     }
 
+    bool regrip = true;
     depth++;
     togo--;
+
     while (next) {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
@@ -108,6 +110,10 @@ namespace solve {
 
       // Check inside loop to avoid unnecessary recursion unwinds
       if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
+        if (m == move::G && !regrip) // only explore forced regrips
+          continue;
+        regrip = false;
+
         int corners1 = coord::move_corners[corners][m];
         moves[depth - 1] = m;
         next1 &= move::p1mask & move::next[m] & tilt::moves[tilt1];
@@ -137,6 +143,8 @@ namespace solve {
       return true; // we will not find any shorter solutions
     }
 
+    bool regrip = true;
+
     while (next) {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
@@ -151,6 +159,10 @@ namespace solve {
       int tilt1 = tilt::move_coord[tilt][m];
 
       if (prun::get_phase2(corners1, udedges21, tilt1) < togo) {
+        if (m == move::G && !regrip)
+          continue;
+        regrip = false;
+
         moves[depth] = m;
         move::mask next1 = move::p2mask & move::next[m] & tilt::moves[tilt1];
         if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1, stateset1))
@@ -264,6 +276,8 @@ namespace solve {
       int rot = sym::ROT * (sol.second >> 1);
       for (int j = 0; j < res[i].size(); j++) { // undo rotation
         res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
+        if (res[i][j] == move::G)
+          continue;
         if (rot == sym::ROT && res[i][j] >= move::COUNT_CUBE) // we need to flip tilt axes for 1 rotation
           res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
       }

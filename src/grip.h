@@ -42,6 +42,7 @@ namespace grip {
 
   int regrips(const std::vector<int>& sol);
   void init();
+
 }
 
 #endif

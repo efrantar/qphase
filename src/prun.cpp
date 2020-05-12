@@ -155,12 +155,29 @@ namespace prun {
     }
   }
 
-  void init_phase2() {
-    phase2 = new uint8_t[N_CORNUD2];
-    std::fill(phase2, phase2 + N_CORNUD2, EMPTY);
+  int get(uint8_t *tbl, int coord, bool inv, int dir) {
+    int tmp = tbl[coord];
+    return inv ? (tmp >> 3) + ((tmp >> dir) & 1) : tmp >> 3;
+  }
 
-    for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++)
-      phase2[stilt] = 0;
+  void set(uint8_t *tbl, int coord, int val, bool inv, int dir) {
+    if (inv)
+      tbl[coord] ^= !(val - (tbl[coord] >> 3)) << dir;
+    else
+      tbl[coord] = (val << 3) | 0x7;
+  }
+
+  void init_phase2(bool inv, int dir) {
+    if (!inv) {
+      phase2 = new uint8_t[N_CORNUD2];
+      std::fill(phase2, phase2 + N_CORNUD2, EMPTY);
+    }
+
+    if (!inv) {
+      for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++)
+        phase2[stilt] = 0x7; // make sure all inverse dir bits are on
+    } else
+      phase2[dir] ^= 1 << dir;; // every LSB is 1 after the standard init
     int count = 0;
     int dist = 0;
 
@@ -174,7 +191,7 @@ namespace prun {
           for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++) {
             int tilt = tilt::coord_rep[stilt];
 
-            if (phase2[coord] == dist) {
+            if (get(phase2, coord, inv, dir) == dist) {
               count++;
 
               for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
@@ -202,17 +219,17 @@ namespace prun {
                 }
                 tilt1 = tilt::coord_rep[stilt1];
 
-                if (phase2[coord1] <= dist1)
+                if (get(phase2, coord1, inv, dir) <= dist1)
                   continue;
-                phase2[coord1] = dist1;
+                set(phase2, coord1, dist1, inv, dir);
                 coord1 -= tilt::N_COORD_SYM * udedges21 + stilt1;
 
                 int selfs = sym::corners_selfs[csym1] >> 1;
                 for (int s = 1; selfs > 0; s++) {
                   if (selfs & 1) {
                     int coord2 = coord1 + tilt::N_COORD_SYM * sym::conj_udedges2[udedges21][s] + tilt::cored_cls(tilt::cored_coord[tilt1][s]);
-                    if (phase2[coord2] > dist1)
-                      phase2[coord2] = dist1;
+                    if (get(phase2, coord2, inv, dir) > dist1)
+                      set(phase2, coord2, dist1, inv, dir);
                   }
                   selfs >>= 1;
                 }
@@ -229,12 +246,17 @@ namespace prun {
     }
   }
 
-  void init_precheck() {
-    precheck = new uint8_t[N_CSLICE2];
-    std::fill(precheck, precheck + N_CSLICE2, EMPTY);
+  void init_precheck(bool inv, int dir) {
+    if (!inv) {
+      precheck = new uint8_t[N_CSLICE2];
+      std::fill(precheck, precheck + N_CSLICE2, EMPTY);
+    }
 
-    for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++)
-      precheck[stilt] = 0;
+    if (!inv) {
+      for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++)
+        precheck[stilt] = 0x7;
+    } else
+      precheck[dir] ^= 1 << dir;
     int dist = 0;
     int count = 0;
 
@@ -248,7 +270,7 @@ namespace prun {
           for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++) {
             int tilt = tilt::coord_rep[stilt];
 
-            if (precheck[coord] == dist) {
+            if (get(precheck, coord, inv, dir) == dist) {
               count++;
 
               for (move::mask moves = move::p2mask & tilt::moves[tilt]; moves; moves &= moves - 1) {
@@ -265,8 +287,8 @@ namespace prun {
                   coord1 = tilt::N_COORD_SYM * (coord::N_SLICE2 * corners1 + slice21) + tilt::coord_cls[tilt1];
                 }
 
-                if (precheck[coord1] > dist1)
-                  precheck[coord1] = dist1;
+                if (get(precheck, coord1, inv, dir) > dist1)
+                  set(precheck, coord1, dist1, inv, dir);
               }
             }
             coord++;
@@ -305,16 +327,22 @@ namespace prun {
     return dist;
   }
 
-  int get_phase2(int corners, int udedges2, int tilt) {
+  int get_phase2(int corners, int udedges2, int tilt, bool inv, int dir) {
     int tmp = sym::corners_sym[corners];
     int cornud = coord::N_UDEDGES2 * sym::coord_c(tmp) + sym::conj_udedges2[udedges2][sym::coord_s(tmp)];
-    return phase2[tilt::N_COORD_SYM * cornud + tilt::cored_cls(tilt::cored_coord[tilt][sym::coord_s(tmp)])];
+    return get(
+      phase2,
+      tilt::N_COORD_SYM * cornud + tilt::cored_cls(tilt::cored_coord[tilt][sym::coord_s(tmp)]),
+      inv, dir
+    );
   }
 
-  int get_precheck(int corners, int slice, int tilt) {
-    return precheck[
-      tilt::N_COORD_SYM * (coord::N_SLICE2 * corners + coord::slice_to_slice2(slice)) + tilt::coord_cls[tilt]
-    ];
+  int get_precheck(int corners, int slice, int tilt, bool inv, int dir) {
+    return get(
+      precheck,
+      tilt::N_COORD_SYM * (coord::N_SLICE2 * corners + coord::slice_to_slice2(slice)) + tilt::coord_cls[tilt],
+      inv, dir
+    );
   }
 
   bool init(bool file) {
@@ -322,9 +350,13 @@ namespace prun {
 
     if (!file) {
       init_phase1();
-      init_phase2();
-      init_precheck();
-      return true;
+      init_phase2(false, -1);
+      for (int dir = 0; dir < 3; dir++)
+        init_phase2(true, dir);
+      init_precheck(false, -1);
+      for (int dir = 0; dir < 3; dir++)
+        init_precheck(true, dir);
+      return false;
     }
 
     FILE *f = fopen(SAVE.c_str(), "rb");
@@ -332,8 +364,12 @@ namespace prun {
 
     if (f == NULL) {
       init_phase1();
-      init_phase2();
-      init_precheck();
+      init_phase2(false, -1);
+      for (int dir = 0; dir < 3; dir++)
+        init_phase2(true, dir);
+      init_precheck(false, -1);
+      for (int dir = 0; dir < 3; dir++)
+        init_precheck(true, dir);
 
       f = fopen(SAVE.c_str(), "wb");
       if (fwrite(phase1, sizeof(uint64_t), N_FS1TWIST, f) != N_FS1TWIST)

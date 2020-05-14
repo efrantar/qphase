@@ -13,7 +13,7 @@
 namespace solve {
 
   const int DIR_TILTS[] = {
-    0, 5, 4, 0, 5, 4
+    0, 0, 4, 4, 5, 5
   }; // inversion does not change axis permutation
 
   class Search {
@@ -32,6 +32,9 @@ namespace solve {
     int edges_depth;
 
     int moves[50]; // current (partial) solution
+
+    bool inv;
+    int dirtilt;
 
   private:
     void phase1(
@@ -55,12 +58,28 @@ namespace solve {
   void Search::run() {
     uedges[0] = cube.uedges;
     dedges[0] = cube.dedges;
-    edges_depth = 0;
+    inv = dir & 1;
+    dirtilt = tilt::coord_cls[cube.tilt];
 
-    move::mask next;
-    prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
-    next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
-    phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, 1);
+    if (inv) {
+      p1depth--; // since we +1ed to avoid biasing the search towards inverse directions
+      for (int stilt = 0; stilt < 3; stilt++) {
+        int tilt = tilt::coord_rep[stilt];
+        move::mask next;
+        if (prun::get_phase1(cube.flip, cube.slice, cube.twist, tilt, p1depth, next) <= p1depth) {
+          next &= move::p1mask & tilt::moves[tilt] & d0moves; // select current search split
+          edges_depth = 0;
+          // We may start with any legal gripper state
+          phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, tilt, next, grip::N_STATESETS - 1);
+        }
+      }
+    } else {
+      move::mask next;
+      prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
+      next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
+      edges_depth = 0;
+      phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, 1);
+    }
   }
 
   void Search::phase1(
@@ -69,7 +88,7 @@ namespace solve {
     if (done)
       return;
     if (togo == 0) {
-      int tmp = prun::get_precheck(corners, slice, tilt);
+      int tmp = prun::get_precheck(corners, slice, tilt, inv, dirtilt);
       if (tmp >= lenlim - depth) // phase 2 precheck, only reconstruct edges if successful
         return;
 
@@ -80,7 +99,7 @@ namespace solve {
       edges_depth = depth - 1;
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
-      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt), tmp); togo1 < lenlim - depth; togo1++) {
+      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt, inv, dirtilt), tmp); togo1 < lenlim - depth; togo1++) {
         // We don't want to block any moves here as this might cause us to require another full search with
         // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
         if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt], stateset))
@@ -134,6 +153,11 @@ namespace solve {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
         return false;
+      if (inv && !(stateset & 1)) // neutral state must be reachable when we want to invert the solution
+        return false;
+
+      if (inv)
+        std::cout << dirtilt << " " << tilt::coord_cls[tilt] << "\n";
 
       searchres sol = {std::vector<int>(depth), dir };
       for (int i = 0; i < depth; i++)
@@ -158,7 +182,7 @@ namespace solve {
       int corners1 = coord::move_corners[corners][m];
       int tilt1 = tilt::move_coord[tilt][m];
 
-      if (prun::get_phase2(corners1, udedges21, tilt1) < togo) {
+      if (prun::get_phase2(corners1, udedges21, tilt1, inv, dirtilt) < togo) {
         if (m == move::G && !regrip)
           continue;
         regrip = false;
@@ -250,12 +274,18 @@ namespace solve {
       dirs[dir].tilt = DIR_TILTS[dir];
 
       move::mask tmp; // simply ignore, makes no sense anyways without proper `togo`
-      depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt, 100, tmp);
+      if (dir & 1) { // inverse searches may start the phase 1 search with any of the tilt classes
+        depths[dir] = 100;
+        for (int stilt = 0; stilt < 3; stilt++) {
+          depths[dir] = std::min(
+            depths[dir],
+            prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, tilt::coord_rep[stilt], 100, tmp)
+          );
+        }
+        depths[dir]++; // to not bias the search towards inverse searches
+      } else
+        depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt, 100, tmp);
       splits[dir] = 0;
-
-      // TODO: properly implement inverse search
-      if (dir & 1)
-        depths[dir] = 1000;
     }
 
     job_mtx.unlock(); // start solving
@@ -273,7 +303,14 @@ namespace solve {
       const searchres& sol = sols.top();
       res[i].resize(sol.first.size());
 
+      for (int m : sol.first)
+        std::cout << move::names[m] << " ";
+      std::cout << "\n";
+
       int rot = sym::ROT * (sol.second >> 1);
+
+      std::cout << (sol.second & 1) << " " << rot << "\n";
+
       for (int j = 0; j < res[i].size(); j++) { // undo rotation
         res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
         if (res[i][j] == move::G)
@@ -281,11 +318,22 @@ namespace solve {
         if (rot == sym::ROT && res[i][j] >= move::COUNT_CUBE) // we need to flip tilt axes for 1 rotation
           res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
       }
+
+      for (int m : res[i])
+        std::cout << move::names[m] << " ";
+      std::cout << "\n";
+
       if (sol.second & 1) { // undo inversion
         for (int j = 0; j < res[i].size(); j++)
           res[i][j] = res[i][j] < move::COUNT_CUBE ? move::inv[res[i][j]] : res[i][j];
         std::reverse(res[i].begin(), res[i].end());
       }
+
+      for (int m : res[i])
+        std::cout << move::names[m] << " ";
+      std::cout << "\n";
+
+      // TODO: for translating inverse solutions we need to consider that we may end up with RL/FB axes shuffled
 
       int tilt = 0;
       for (int j = 0; j < res[i].size(); j++) {
@@ -293,6 +341,10 @@ namespace solve {
         res[i][j] = tilt::trans_move[tilt][res[i][j]];
         tilt = tilt::move_coord[tilt][tmp];
       }
+
+      for (int m : res[i])
+        std::cout << move::names[m] << " ";
+      std::cout << "\n";
 
       sols.pop();
     }

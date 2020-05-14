@@ -131,8 +131,8 @@ namespace grip {
 
         for (int m = 15; m < N_MOVES; m++) {
           if (m < move::COUNT_CUBE) {
-            int ax = m / 15 - 1;
-            if (c.blocked[2 * ax] == 1 && c.blocked[2 * ax + 1] == 1)
+            int other_ax = !(m / 15 - 1);
+            if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
               continue;
           } else if (m >= move::COUNT - move::COUNT_GRIP) {
             int f = m - (move::COUNT - move::COUNT_GRIP);

@@ -177,7 +177,7 @@ namespace prun {
       for (int stilt = 0; stilt < tilt::N_COORD_SYM; stilt++)
         phase2[stilt] = 0x7; // make sure all inverse dir bits are on
     } else
-      phase2[dir] ^= 1 << dir;; // every LSB is 1 after the standard init
+      phase2[dir] ^= 1 << dir;; // every dir-bit is 1 after the standard init
     int count = 0;
     int dist = 0;
 

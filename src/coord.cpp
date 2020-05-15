@@ -100,7 +100,7 @@ namespace coord {
     }
   }
 
-  /* Faster than using `*_comperm()` twice */
+  /* Faster than using `*_combperm()` twice */
 
   int get_perm8(const int cubies[]) {
     int comb1 = 0;

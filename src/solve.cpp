@@ -13,8 +13,37 @@
 namespace solve {
 
   const int DIR_TILTS[] = {
-    0, 0, 4, 4, 5, 5
+    0, 0, 8, 8, 5, 5
   }; // inversion does not change axis permutation
+
+  // If an inverse search ends in a different face permutation (but same symmetry class) as the default direction's,
+  // we have to flip the tilt axes on conversion
+  const bool FLIP_TILTS[] = {
+      false, // {U, R, F, D, L, B},
+      true,  // {U, B, R, D, F, L},
+      false, // {U, L, B, D, R, F},
+      true,  // {U, F, L, D, B, R},
+      true,  // {R, U, B, L, D, F},
+      false, // {F, U, R, B, D, L},
+      true,  // {L, U, F, R, D, B},
+      false, // {B, U, L, F, D, R},
+      false, // {R, F, U, L, B, D},
+      true,  // {B, R, U, F, L, D},
+      false, // {L, B, U, R, F, D},
+      true,  // {F, L, U, B, R, D},
+      false, // {D, R, B, U, L, F},
+      true,  // {D, F, R, U, B, L},
+      false, // {D, L, F, U, R, B},
+      true,  // {D, B, L, U, F, R},
+      true,  // {R, D, F, L, U, B},
+      false, // {B, D, R, F, U, L},
+      true,  // {L, D, B, R, U, F},
+      false, // {F, D, L, B, U, R},
+      false, // {R, B, D, L, F, U},
+      true,  // {F, R, D, B, L, U},
+      false, // {L, F, D, R, B, U},
+      true   // {B, L, D, F, R, U}
+  };
 
   class Search {
 
@@ -156,10 +185,7 @@ namespace solve {
       if (inv && !(stateset & 1)) // neutral state must be reachable when we want to invert the solution
         return false;
 
-      if (inv)
-        std::cout << dirtilt << " " << tilt::coord_cls[tilt] << "\n";
-
-      searchres sol = {std::vector<int>(depth), dir };
+      searchres sol = {std::vector<int>(depth), (dir << 1) | (inv ? FLIP_TILTS[tilt] : 0) };
       for (int i = 0; i < depth; i++)
         sol.first[i] = moves[i];
       solver.report_sol(sol);
@@ -303,37 +329,21 @@ namespace solve {
       const searchres& sol = sols.top();
       res[i].resize(sol.first.size());
 
-      for (int m : sol.first)
-        std::cout << move::names[m] << " ";
-      std::cout << "\n";
+      bool flip = sol.second & 1;
+      bool inv = (sol.second >> 1) & 1;
+      int rot = sym::ROT * (sol.second >> 2);
 
-      int rot = sym::ROT * (sol.second >> 1);
-
-      std::cout << (sol.second & 1) << " " << rot << "\n";
-
-      for (int j = 0; j < res[i].size(); j++) { // undo rotation
+      for (int j = 0; j < res[i].size(); j++) // undo rotation
         res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
-        if (res[i][j] == move::G)
-          continue;
-        if (rot == sym::ROT && res[i][j] >= move::COUNT_CUBE) // we need to flip tilt axes for 1 rotation
-          res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
-      }
-
-      for (int m : res[i])
-        std::cout << move::names[m] << " ";
-      std::cout << "\n";
-
-      if (sol.second & 1) { // undo inversion
-        for (int j = 0; j < res[i].size(); j++)
-          res[i][j] = res[i][j] < move::COUNT_CUBE ? move::inv[res[i][j]] : res[i][j];
+      if (inv) { // undo inversion
+        for (int j = 0; j < res[i].size(); j++) {
+          if (res[i][j] < move::COUNT_CUBE)
+            res[i][j] = move::inv[res[i][j]];
+          else if (flip && res[i][j] != move::G)
+            res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
+        }
         std::reverse(res[i].begin(), res[i].end());
       }
-
-      for (int m : res[i])
-        std::cout << move::names[m] << " ";
-      std::cout << "\n";
-
-      // TODO: for translating inverse solutions we need to consider that we may end up with RL/FB axes shuffled
 
       int tilt = 0;
       for (int j = 0; j < res[i].size(); j++) {
@@ -341,10 +351,6 @@ namespace solve {
         res[i][j] = tilt::trans_move[tilt][res[i][j]];
         tilt = tilt::move_coord[tilt][tmp];
       }
-
-      for (int m : res[i])
-        std::cout << move::names[m] << " ";
-      std::cout << "\n";
 
       sols.pop();
     }

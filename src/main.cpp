@@ -188,11 +188,10 @@ int main(int argc, char *argv[]) {
           ).count() / 1000.;
           solver.finish();
 
-          if (false && (tmp.size() == 0 || !check(cubes[i], tmp[0]))) { // TODO: activate again
+          if (tmp.size() == 0 || !check(cubes[i], tmp[0])) {
             std::cout << face::from_cubie(cubes[i]) << std::endl;
             failed++;
-          }
-          else
+          } else
             sols.push_back(tmp[0]);
         }
 

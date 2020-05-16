@@ -20,7 +20,7 @@ namespace tilt {
 
   const cube MOVES[] = {
     {{F, R, D, B, L, U}}, // RL tilt
-    {{R, D, F, L, U, B}}, // FB tilt
+    {{L, U, F, R, D, B}}, // FB tilt
   };
 
   extern int coord_cls[N_COORD];

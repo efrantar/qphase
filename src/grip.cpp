@@ -1,17 +1,18 @@
 #include "grip.h"
 
 #include <iostream>
-#include <queue>
+
+#include <numeric>
 #include "move.h"
 
 namespace grip {
 
   // Datastructure for tracking the cube state
   struct cube {
-    int blocked[4];
+    int blocked[4]; // int because we use more values than just 0 and 1
   };
 
-  const cube INVALID = {-1, -1, -1, -1}; // this is why we defined `blocked` as an integer
+  const cube INVALID = {-1, -1, -1, -1};
 
   // Compress/uncompress GRIP coordinate
   const int enc_state[16] = {
@@ -23,20 +24,21 @@ namespace grip {
 
   // Cube moves + regrips
   cube move_cubes[N_MOVES][regrip::COUNT];
+  std::string move_names[N_MOVES][regrip::COUNT];
 
   // Regrips for RL-axis only
   const cube MOVE_CUBES[15][regrip::COUNT] = {
     {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R
-    {{0, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R2
+    {{2, 0, 0, 0}, {2, 1, 0, 0}, {2, 0, 1, 0}, {2, 0, 0, 1}, INVALID,      {2, 1, 1, 0}, {2, 1, 0, 1}, INVALID     }, // R2
     {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R'
     {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID     }, // L
-    {{0, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, INVALID,      {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID     }, // L2
+    {{0, 2, 0, 0}, {1, 2, 0, 0}, {0, 2, 1, 0}, {0, 2, 0, 1}, INVALID,      {1, 2, 1, 0}, {1, 2, 0, 1}, INVALID     }, // L2
     {{1, 0, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID     }, // L'
     {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L)
     {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L2)
     {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L')
     {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L)
-    {{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 1, 0}, {0, 0, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L2)
+    {{2, 2, 0, 0}, {2, 2, 1, 1}, {2, 2, 1, 0}, {2, 2, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L2)
     {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L')
     {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L)
     {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L2)
@@ -59,6 +61,8 @@ namespace grip {
   };
 
   int nextset[N_STATESETS][N_MOVES];
+  int nextstate[state::COUNT][N_MOVES][regrip::COUNT];
+  int score[state::COUNT][N_MOVES][regrip::COUNT];
 
   bool valid(const cube& c) {
     return !((c.blocked[0] || c.blocked[1]) && (c.blocked[2] || c.blocked[3]));
@@ -66,7 +70,7 @@ namespace grip {
 
   void mul(const cube& c1, const cube& c2, cube& into) {
     for (int i = 0; i < 4; i++)
-      into.blocked[i] = c1.blocked[i] ^ c2.blocked[i];
+      into.blocked[i] = (c1.blocked[i] + c2.blocked[i]) & 1;
   }
 
   int get_state(const cube& c) {
@@ -88,20 +92,73 @@ namespace grip {
     return std::equal(c1.blocked, c1.blocked + 4, c2.blocked);
   }
 
-  int regrips(const std::vector<int>& sol) {
-    int regrips = 0;
+  bool operator!=(const cube& c1, const cube& c2) {
+    return !(c1 == c2);
+  }
 
-    int stateset = 1;
-    for (int m : sol) {
-      if (nextset[stateset][m])
+  int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog) {
+    if (!sol.size()) // best avoid any trouble
+      return 0;
+
+    int len = sol.size();
+    parg.resize(len);
+    blog.resize(len);
+
+    int dp[len][regrip::COUNT];
+    int pd[len][regrip::COUNT];
+    int pd1[len][regrip::COUNT];
+    int pd2[len][regrip::COUNT];
+    std::fill(dp[0], dp[0] + len * regrip::COUNT, -1);
+
+    int stateset = state::DEFAULTSET;
+    for (int i = 0; i < sol.size(); i++) {
+      for (int state = 0; state < state::COUNT; state++) {
+        if (!in(stateset, state))
+          continue;
+        int m = sol[i];
+
+        for (int r = 0; r < regrip::COUNT; r++) {
+          if (m == move::G) {
+            for (int m1 = move::COUNT; m1 < N_MOVES; m1++) {
+              int state1 = nextstate[state][m1][r];
+              if (state1 == -1)
+                continue;
+              if (dp[i][state] + score[state][sol[i]][r] > dp[i + 1][state1]) {
+                dp[i + 1][state1] = dp[i][state] + score[state][sol[i]][r];
+                pd[i + 1][state1] = state;
+                pd1[i + 1][state1] = r;
+                pd2[i + 1][state1] = m1;
+              }
+            }
+            continue;
+          }
+
+          int state1 = nextstate[state][m][r];
+          if (state1 == -1)
+            continue;
+          if (dp[i][state] + score[state][m][r] > dp[i + 1][state1]) {
+            dp[i + 1][state1] = dp[i][state] + score[state][m][r];
+            pd1[i + 1][state1] = r;
+          }
+        }
         stateset = nextset[stateset][m];
-      else {
-        stateset = nextset[stateset][move::G];
-        regrips++;
       }
     }
 
-    return regrips;
+    int best_s = 0;
+    for (int s = 1; s < state::COUNT; s++) {
+      if (dp[s] > dp[best_s])
+        best_s = s;
+    }
+    int s = best_s;
+    for (int i = len - 1; i > 0; i++) {
+      parg[i - 1] = pd1[i][s];
+      if (sol[i] == move::G)
+        blog[i - 1] = pd2[i][s];
+      s = pd[i][s];
+    }
+
+    return dp[len - 1][best_s];
   }
 
   void init() {
@@ -152,6 +209,55 @@ namespace grip {
 
       for (int m = move::COUNT; m < N_MOVES; m++)
         nextset[stateset][move::G] |= nextset[stateset][m];
+    }
+
+    std::string face_names[] = {"rR", "rL", "rF", "rB"};
+    for (int m = 0; m < N_MOVES; m++) {
+      for (int r = 0; r < regrip::COUNT; r++) {
+        for (int i = 0; i < 4; i++) {
+          if (move_cubes[m][r].blocked[i]) {
+            if (i > 0)
+              move_names[m][r] += " ";
+            move_names[m][r] += face_names[i];
+          }
+        }
+        move_names[m][r] = "[" + move_names[m][r] + "]";
+      }
+    }
+
+    std::fill(nextstate[0][0], nextstate[0][0] + state::COUNT * N_MOVES * regrip::COUNT, - 1);
+    for (int state = 0; state < state::COUNT; state++) {
+      set_state(c, state);
+      for (int m = 0; m < N_MOVES; m++) {
+        for (int r = 0; r < regrip::COUNT; r++) {
+          if (move_cubes[m][r] != INVALID) {
+            mul(c, move_cubes[m][r], tmp);
+            nextstate[state][m][r] = get_state(tmp);
+          }
+        }
+      }
+    }
+
+    for (int state = 0; state < state::COUNT; state++) {
+      set_state(c, state);
+      for (int m = 0; m < N_MOVES; m++) {
+        if (m < move::COUNT - move::COUNT_GRIP) { // tilts are always safe
+          std::fill(score[state][m], score[state][m] + regrip::COUNT, 1);
+          continue;
+        }
+        for (int r = 0; r < regrip::COUNT; r++) {
+          if (move_cubes[m][r] != INVALID) {
+            int count = 0;
+            for (int i = 0; i < 4; i++) {
+              if (!move_cubes[m][0].blocked[i])
+                count += !move_cubes[m][r].blocked[i] && !c.blocked[i];
+              // Note that it is sufficient to count the non-moved non-blocked grippers to determine whether or
+              // not a move is safe
+            }
+            score[state][m][r] = count >= 2;
+          }
+        }
+      }
     }
   }
 

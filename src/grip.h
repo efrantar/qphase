@@ -17,6 +17,9 @@ namespace grip {
     const int RLB = 4;
     const int RLF = 5;
     const int RL = 6;
+
+    const int DEFAULTSET = 1;
+    inline bool in(int stateset, int state) { return stateset & (1 << state); }
   }
   using namespace state;
 
@@ -38,9 +41,10 @@ namespace grip {
   const int N_STATESETS = 1 << state::COUNT;
   const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
 
+  extern std::string move_names[N_MOVES][regrip::COUNT];
   extern int nextset[N_STATESETS][N_MOVES];
 
-  int regrips(const std::vector<int>& sol);
+  int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog);
   void init();
 
 }

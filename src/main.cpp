@@ -254,9 +254,17 @@ int main(int argc, char *argv[]) {
 
       for (std::vector<int>& sol : sols) {
         int len = sol.size();
-        for (int m : sol)
-          std::cout << move::names[m] << " ";
-        std::cout << "(" << len << ")" << std::endl;
+
+        std::vector<int> parg;
+        std::vector<int> blog;
+        int score = grip::optim(sol, parg, blog);
+
+        for (int i = 0; i < len; i++) {
+          int m = sol[i];
+          std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+        }
+
+        std::cout << "{" << len << " | " << score << "}" << std::endl;
       }
     }
   }

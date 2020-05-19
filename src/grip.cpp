@@ -28,27 +28,27 @@ namespace grip {
 
   // Regrips for RL-axis only
   const cube MOVE_CUBES[15][regrip::COUNT] = {
-    {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R
+    {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID     }, // R
     {{2, 0, 0, 0}, {2, 1, 0, 0}, {2, 0, 1, 0}, {2, 0, 0, 1}, INVALID,      {2, 1, 1, 0}, {2, 1, 0, 1}, INVALID     }, // R2
-    {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID     }, // R'
-    {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID     }, // L
+    {{1, 0, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID     }, // R'
+    {{0, 1, 0, 0}, {1, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID     }, // L
     {{0, 2, 0, 0}, {1, 2, 0, 0}, {0, 2, 1, 0}, {0, 2, 0, 1}, INVALID,      {1, 2, 1, 0}, {1, 2, 0, 1}, INVALID     }, // L2
-    {{1, 0, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID     }, // L'
-    {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L)
-    {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L2)
-    {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L')
-    {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L)
-    {{2, 2, 0, 0}, {2, 2, 1, 1}, {2, 2, 1, 0}, {2, 2, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L2)
-    {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L')
-    {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L)
-    {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L2)
-    {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L')
+    {{0, 1, 0, 0}, {1, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID     }, // L'
+    {{1, 1, 0, 0}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L)
+    {{1, 2, 0, 0}, INVALID,      {1, 2, 1, 0}, {1, 2, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L2)
+    {{1, 1, 0, 0}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R L')
+    {{2, 1, 0, 0}, INVALID,      {2, 1, 1, 0}, {2, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L)
+    {{2, 2, 0, 0}, INVALID,      {2, 2, 1, 0}, {2, 2, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L2)
+    {{2, 1, 0, 0}, INVALID,      {2, 1, 1, 0}, {2, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R2 L')
+    {{1, 1, 0, 0}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L)
+    {{1, 2, 0, 0}, INVALID,      {1, 2, 1, 0}, {1, 2, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L2)
+    {{1, 1, 0, 0}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, INVALID,      INVALID,      INVALID,      INVALID     }, // (R' L')
   };
 
   // Tilt moves + regrips
   const cube TILT_CUBES[move::COUNT_TILT][regrip::COUNT] = {
-    {{1, 1, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 0}, {1, 1, 0, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }, // tRL
-    {{0, 0, 1, 1}, {1, 1, 1, 1}, {1, 0, 1, 1}, {0, 1, 1, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }  // tFB
+    {{1, 1, 0, 0}, INVALID,      {1, 1, 1, 0}, {1, 1, 0, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }, // tRL
+    {{0, 0, 1, 1}, INVALID,      {1, 0, 1, 1}, {0, 1, 1, 1}, {1, 1, 1, 1}, INVALID     , INVALID     , INVALID     }  // tFB
   };
 
   // Hard regrips
@@ -100,22 +100,28 @@ namespace grip {
     if (!sol.size()) // best avoid any trouble
       return 0;
 
+    for (int m : sol)
+      std::cout << move::names[m] << " ";
+    std::cout << "\n";
+
     int len = sol.size();
     parg.resize(len);
     blog.resize(len);
 
-    int dp[len][regrip::COUNT];
-    int pd[len][regrip::COUNT];
-    int pd1[len][regrip::COUNT];
-    int pd2[len][regrip::COUNT];
+    int dp[len][state::COUNT];
+    int pd[len][state::COUNT];
+    int pd1[len][state::COUNT];
+    int pd2[len][state::COUNT];
     std::fill(dp[0], dp[0] + len * regrip::COUNT, -1);
+    dp[0][0] = 0;
 
     int stateset = state::DEFAULTSET;
-    for (int i = 0; i < sol.size(); i++) {
+    for (int i = 0; i < sol.size() - 1; i++) {
+      int m = sol[i];
+
       for (int state = 0; state < state::COUNT; state++) {
         if (!in(stateset, state))
           continue;
-        int m = sol[i];
 
         for (int r = 0; r < regrip::COUNT; r++) {
           if (m == move::G) {
@@ -138,11 +144,13 @@ namespace grip {
             continue;
           if (dp[i][state] + score[state][m][r] > dp[i + 1][state1]) {
             dp[i + 1][state1] = dp[i][state] + score[state][m][r];
+            pd[i + 1][state1] = state;
             pd1[i + 1][state1] = r;
           }
         }
-        stateset = nextset[stateset][m];
       }
+
+      stateset = nextset[stateset][m];
     }
 
     int best_s = 0;
@@ -151,9 +159,9 @@ namespace grip {
         best_s = s;
     }
     int s = best_s;
-    for (int i = len - 1; i > 0; i++) {
+    for (int i = len - 1; i > 0; i--) {
       parg[i - 1] = pd1[i][s];
-      if (sol[i] == move::G)
+      if (sol[i - 1] == move::G)
         blog[i - 1] = pd2[i][s];
       s = pd[i][s];
     }
@@ -214,25 +222,38 @@ namespace grip {
     std::string face_names[] = {"rR", "rL", "rF", "rB"};
     for (int m = 0; m < N_MOVES; m++) {
       for (int r = 0; r < regrip::COUNT; r++) {
+        move_names[m][r] = "[";
         for (int i = 0; i < 4; i++) {
-          if (move_cubes[m][r].blocked[i]) {
-            if (i > 0)
-              move_names[m][r] += " ";
-            move_names[m][r] += face_names[i];
-          }
+          if (move_cubes[m][r].blocked[i] && !move_cubes[m][0].blocked[i])
+            move_names[m][r] += face_names[i] + " ";
         }
-        move_names[m][r] = "[" + move_names[m][r] + "]";
+        if (move_names[m][r].size() > 1)
+          move_names[m][r][move_names[m][r].size() - 1] = ']';
+        else
+          move_names[m][r] += "]";
       }
     }
 
     std::fill(nextstate[0][0], nextstate[0][0] + state::COUNT * N_MOVES * regrip::COUNT, - 1);
     for (int state = 0; state < state::COUNT; state++) {
       set_state(c, state);
-      for (int m = 0; m < N_MOVES; m++) {
+
+      for (int m = 15; m < N_MOVES; m++) {
+        if (m < move::COUNT_CUBE) {
+          int other_ax = !(m / 15 - 1);
+          if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
+            continue;
+        } else if (m >= move::COUNT - move::COUNT_GRIP) {
+          int f = m - (move::COUNT - move::COUNT_GRIP);
+          if (c.blocked[f])
+            continue;
+        }
+
         for (int r = 0; r < regrip::COUNT; r++) {
           if (move_cubes[m][r] != INVALID) {
             mul(c, move_cubes[m][r], tmp);
-            nextstate[state][m][r] = get_state(tmp);
+            if (valid(tmp))
+              nextstate[state][m][r] = get_state(tmp);
           }
         }
       }
@@ -240,7 +261,7 @@ namespace grip {
 
     for (int state = 0; state < state::COUNT; state++) {
       set_state(c, state);
-      for (int m = 0; m < N_MOVES; m++) {
+      for (int m = 15; m < N_MOVES; m++) {
         if (m < move::COUNT - move::COUNT_GRIP) { // tilts are always safe
           std::fill(score[state][m], score[state][m] + regrip::COUNT, 1);
           continue;

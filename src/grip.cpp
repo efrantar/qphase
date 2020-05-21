@@ -1,7 +1,5 @@
 #include "grip.h"
 
-#include <iostream>
-
 #include <numeric>
 #include "move.h"
 
@@ -61,6 +59,7 @@ namespace grip {
   };
 
   int nextset[N_STATESETS][N_MOVES];
+  int nextiset[N_STATESETS][N_MOVES];
   int nextstate[state::COUNT][N_MOVES][regrip::COUNT];
   int score[state::COUNT][N_MOVES][regrip::COUNT];
 
@@ -100,10 +99,6 @@ namespace grip {
     if (!sol.size()) // best avoid any trouble
       return 0;
 
-    for (int m : sol)
-      std::cout << move::names[m] << " ";
-    std::cout << "\n";
-
     int len = sol.size();
     parg.resize(len);
     blog.resize(len);
@@ -112,7 +107,7 @@ namespace grip {
     int pd[len][state::COUNT];
     int pd1[len][state::COUNT];
     int pd2[len][state::COUNT];
-    std::fill(dp[0], dp[0] + len * regrip::COUNT, -1);
+    std::fill(dp[0], dp[0] + len * state::COUNT, -1);
     dp[0][0] = 0;
 
     int stateset = state::DEFAULTSET;
@@ -155,7 +150,7 @@ namespace grip {
 
     int best_s = 0;
     for (int s = 1; s < state::COUNT; s++) {
-      if (dp[s] > dp[best_s])
+      if (dp[len - 1][s] > dp[len - 1][best_s])
         best_s = s;
     }
     int s = best_s;
@@ -188,35 +183,41 @@ namespace grip {
     cube c;
     cube tmp;
 
-    for (int stateset = 0; stateset < N_STATESETS; stateset++) {
-      for (int state = 0; state < state::COUNT; state++) {
-        if ((stateset & (1 << state)) == 0)
-          continue;
-        set_state(c, state);
+    for (int state = 0; state < state::COUNT; state++) {
+      set_state(c, state);
 
-        for (int m = 15; m < N_MOVES; m++) {
-          if (m < move::COUNT_CUBE) {
-            int other_ax = !(m / 15 - 1);
-            if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
-              continue;
-          } else if (m >= move::COUNT - move::COUNT_GRIP) {
-            int f = m - (move::COUNT - move::COUNT_GRIP);
-            if (c.blocked[f])
-              continue;
-          }
+      for (int m = 15; m < N_MOVES; m++) {
+        if (m < move::COUNT_CUBE) {
+          int other_ax = !(m / 15 - 1);
+          if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
+            continue;
+        } else if (m >= move::COUNT - move::COUNT_GRIP) {
+          int f = m - (move::COUNT - move::COUNT_GRIP);
+          if (c.blocked[f])
+            continue;
+        }
 
-          for (int r = 0; r < regrip::COUNT; r++) {
-            if (move_cubes[m][r] == INVALID)
-              continue;
-            mul(c, move_cubes[m][r], tmp);
-            if (valid(tmp))
-              nextset[stateset][m] |= 1 << get_state(tmp);
+        for (int r = 0; r < regrip::COUNT; r++) {
+          if (move_cubes[m][r] == INVALID)
+            continue;
+          mul(c, move_cubes[m][r], tmp);
+          if (valid(tmp)) {
+            int state1 = get_state(tmp);
+            for (int stateset = 0; stateset < N_STATESETS; stateset++) {
+              if (state::in(stateset, state))
+                nextset[stateset][m] |= 1 << state1;
+              if (state::in(stateset, state1))
+                nextiset[stateset][m] |= 1 << state;
+            }
           }
         }
       }
-
-      for (int m = move::COUNT; m < N_MOVES; m++)
+    }
+    for (int stateset = 0; stateset < N_STATESETS; stateset++) {
+      for (int m = move::COUNT; m < N_MOVES; m++) {
         nextset[stateset][move::G] |= nextset[stateset][m];
+        nextiset[stateset][move::G] |= nextiset[stateset][m];
+      }
     }
 
     std::string face_names[] = {"rR", "rL", "rF", "rB"};

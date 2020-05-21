@@ -43,6 +43,7 @@ namespace grip {
 
   extern std::string move_names[N_MOVES][regrip::COUNT];
   extern int nextset[N_STATESETS][N_MOVES];
+  extern int nextiset[N_STATESETS][N_MOVES];
 
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog);
   void init();

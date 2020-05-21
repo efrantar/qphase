@@ -4,7 +4,6 @@
 #include <bitset>
 #include <strings.h>
 #include <thread>
-#include <iostream>
 
 #include "grip.h"
 #include "prun.h"
@@ -145,7 +144,11 @@ namespace solve {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
 
-      int stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
+      int stateset1;
+      if (inv)
+        stateset1 = grip::nextiset[stateset][tilt::trans_move[tilt][m]];
+      else
+        stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
       if (!stateset1)
         continue;
 
@@ -199,7 +202,11 @@ namespace solve {
       int m = ffsll(next) -  1; // get rightmost move index (`ffsll()` uses 1-based indexing)
       next &= next - 1;
 
-      int stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
+      int stateset1;
+      if (inv)
+        stateset1 = grip::nextiset[stateset][tilt::trans_move[tilt][m]];
+      else
+        stateset1 = grip::nextset[stateset][tilt::trans_move[tilt][m]];
       if (!stateset1)
         continue;
 

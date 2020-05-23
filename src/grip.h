@@ -1,3 +1,7 @@
+/**
+ * Handling of regrips; primarily stateset transition tables and eventual regrip reconstruction.
+ */
+
 #ifndef __GRIP__
 #define __GRIP__
 
@@ -18,12 +22,11 @@ namespace grip {
     const int RLF = 5;
     const int RL = 6;
 
-    const int DEFAULTSET = 1;
     inline bool in(int stateset, int state) { return stateset & (1 << state); }
   }
   using namespace state;
 
-  // Regrip options
+  // Regrip options; mentioned axis are affected (A is moved axis, B the orthogonal one, 1 lower and 2 higher face)
   namespace regrip {
     const int COUNT = 8;
 
@@ -38,14 +41,38 @@ namespace grip {
   }
   using namespace regrip;
 
-  const int N_STATESETS = 1 << state::COUNT;
+  // Datastructure for tracking the cube state
+  struct cube {
+    int blocked[4]; // int because we use more values than just 0 and 1
+  };
+
   const int N_MOVES = move::COUNT + 4; // + 4 regrips anchored on each face respectively
+  const int N_STATESETS = 1 << state::COUNT;
+  const int DEFAULTSET = 1;
+  const int ALLSTATES = N_STATESETS - 1; // all bits on
 
+  // Cube moves + regrips, UD-moves do not exist here (reindexing would just make things more complicated)
+  extern cube move_cubes[N_MOVES][regrip::COUNT];
   extern std::string move_names[N_MOVES][regrip::COUNT];
-  extern int nextset[N_STATESETS][N_MOVES];
-  extern int nextiset[N_STATESETS][N_MOVES];
 
+  extern int nextset[N_STATESETS][N_MOVES];
+  extern int nextiset[N_STATESETS][N_MOVES]; // for inverse searches
+  extern int nextstate[state::COUNT][N_MOVES][regrip::COUNT];
+
+  bool valid(const cube& c);
+  void mul(const cube& c1, const cube& c2, cube& into);
+  int get_state(const cube& c);
+  void set_state(cube& c, int state);
+
+  /*
+   * Find the best actual regrip solution. `parg` contains the parallel regrips, `blog` any blocked regrips and the
+   * final solution score is returned. Currently this is the number of "safe" (i.e. with at least double support) moves.
+   */
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog);
+
+  bool operator==(const cube& c1, const cube& c2);
+  bool operator!=(const cube& c1, const cube& c2);
+
   void init();
 
 }

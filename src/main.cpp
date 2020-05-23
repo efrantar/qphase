@@ -281,15 +281,16 @@ int main(int argc, char *argv[]) {
       }
 
       auto tick = std::chrono::high_resolution_clock::now();
-      solver.solve(c, sols);
-      std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now() - tick
-      ).count() / 1000. << "ms" << std::endl;
 
+      solver.solve(c, sols);
       int sol;
       std::vector<int> parg;
       std::vector<int> blog;
       int score = best(sols, sol, parg, blog);
+
+      std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now() - tick
+      ).count() / 1000. << "ms" << std::endl;
 
       int len = sols[sol].size();
       if (len == 0)

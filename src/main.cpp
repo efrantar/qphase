@@ -91,6 +91,32 @@ double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vec
   return total / sols.size();
 }
 
+int best(
+  const std::vector<std::vector<int>>& sols, int& sol, std::vector<int>& parg, std::vector<int>& blog
+) {
+  if (sols.size() == 0)
+    return -1;
+
+  sol = 0;
+  int score = grip::optim(sols[0], parg, blog);
+
+  for (int i = 1; i < sols.size(); i++) {
+    if (sols[i].size() > sols[0].size())
+      break;
+    std::vector<int> parg1;
+    std::vector<int> blog1;
+    int score1 = grip::optim(sols[i], parg1, blog1);
+    if (score1 > score) {
+      score = score1;
+      sol = i;
+      parg = std::move(parg1); // we don't need the vector anymore afterwards
+      blog = std::move(blog1);
+    }
+  }
+
+  return score;
+}
+
 int main(int argc, char *argv[]) {
   int n_threads = 1;
   int tlim = 10;
@@ -173,6 +199,7 @@ int main(int argc, char *argv[]) {
 
         std::vector<std::vector<int>> sols;
         std::vector<int> times(cubes.size());
+        std::vector<int> scores(cubes.size());
         int failed = 0;
 
         std::cout << "Benchmarking ..." << std::endl;
@@ -183,22 +210,29 @@ int main(int argc, char *argv[]) {
           auto tick = std::chrono::high_resolution_clock::now();
           std::vector<std::vector<int>> tmp;
           solver.solve(cubes[i], tmp);
+
+          int sol;
+          std::vector<int> parg;
+          std::vector<int> blog;
+          scores[i] = best(tmp, sol, parg, blog);
+
           times[i] = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - tick
           ).count() / 1000.;
           solver.finish();
 
-          if (tmp.size() == 0 || !check(cubes[i], tmp[0])) {
+          if (tmp.size() == 0 || !check(cubes[i], tmp[sol])) {
             std::cout << face::from_cubie(cubes[i]) << std::endl;
             failed++;
           } else
-            sols.push_back(tmp[0]);
+            sols.push_back(tmp[sol]);
         }
 
         std::cout << std::endl;
         std::cout << "Failed: " << failed << std::endl;
         std::cout << "Avg. Time: " << std::accumulate(times.begin(), times.end(), 0.) / times.size() << " ms" << std::endl;
         std::cout << "Avg. Moves: " << mean(sols, len) << std::endl;
+        std::cout << "Avg. Score: " << std::accumulate(scores.begin(), scores.end(), 0.) / scores.size() << std::endl;
 
         int freq[100];
         int min = 100;
@@ -252,20 +286,19 @@ int main(int argc, char *argv[]) {
         std::chrono::high_resolution_clock::now() - tick
       ).count() / 1000. << "ms" << std::endl;
 
-      for (std::vector<int>& sol : sols) {
-        int len = sol.size();
+      int sol;
+      std::vector<int> parg;
+      std::vector<int> blog;
+      int score = best(sols, sol, parg, blog);
 
-        std::vector<int> parg;
-        std::vector<int> blog;
-        int score = grip::optim(sol, parg, blog);
-
-        for (int i = 0; i < len; i++) {
-          int m = sol[i];
-          std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
-        }
-
-        std::cout << "{" << len << " | " << score << "}" << std::endl;
+      int len = sols[sol].size();
+      if (len == 0)
+        continue;
+      for (int i = 0; i < len; i++) {
+        int m = sols[sol][i];
+        std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
       }
+      std::cout << "{" << len << " | " << score << "}" << std::endl;
     }
   }
   solver.finish(); // clean exit

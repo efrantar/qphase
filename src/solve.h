@@ -1,3 +1,7 @@
+/**
+ * Actual solving code.
+ */
+
 #ifndef __SOLVE__
 #define __SOLVE__
 

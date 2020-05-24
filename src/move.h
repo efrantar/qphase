@@ -1,3 +1,7 @@
+/**
+ * Move defintions.
+ */
+
 #ifndef __MOVE__
 #define __MOVE__
 

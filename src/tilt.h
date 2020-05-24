@@ -1,3 +1,7 @@
+/**
+ * Stuff related to handling the tilt (i.e. physical orientation of the cube within the robot).
+ */
+
 #ifndef __STATE__
 #define __STATE__
 

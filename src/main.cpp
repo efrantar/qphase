@@ -66,7 +66,7 @@ bool check(
   cubie::cube c1;
   cubie::cube c2;
   int tilt = 0;
-  int grip = 0; // we use table-based transitions as simple multiplying does not some invalid transitions
+  int grip = 0; // we use table-based transitions as simple multiplying would allow some invalid transitions
 
   c1 = c;
   for (int i = 0; i < sol.size(); i++) {
@@ -103,6 +103,7 @@ double mean(const std::vector<std::vector<int>>& sols, int (*len)(const std::vec
   return total / sols.size();
 }
 
+// Select highest scoring solution with minimum number of moves
 int best(
   const std::vector<std::vector<int>>& sols, int& sol, std::vector<int>& parg, std::vector<int>& blog
 ) {

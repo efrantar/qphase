@@ -186,8 +186,9 @@ namespace grip {
       set_state(c, state);
 
       for (int m = 15; m < N_MOVES; m++) {
+        int other_ax;
         if (m < move::COUNT_CUBE) { // there needs to be at least on support on the orthogonal axis
-          int other_ax = !(m / 15 - 1);
+          other_ax = !(m / 15 - 1);
           if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
             continue;
         } else if (m >= move::COUNT - move::COUNT_GRIP) { // anchored face needs to be unblocked
@@ -200,6 +201,10 @@ namespace grip {
           if (move_cubes[m][r] == INVALID)
             continue;
           mul(c, move_cubes[m][r], tmp);
+          if (m < move::COUNT_CUBE) {
+            if (tmp.blocked[2 * other_ax] && tmp.blocked[2 * other_ax + 1]) // stuff like "[rR] F2 [rL]" is impossible
+              continue;
+          }
           if (valid(tmp)) {
             int state1 = get_state(tmp);
             for (int stateset = 0; stateset < N_STATESETS; stateset++) {
@@ -240,8 +245,9 @@ namespace grip {
       set_state(c, state);
 
       for (int m = 15; m < N_MOVES; m++) {
+        int other_ax;
         if (m < move::COUNT_CUBE) {
-          int other_ax = !(m / 15 - 1);
+          other_ax = !(m / 15 - 1);
           if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
             continue;
         } else if (m >= move::COUNT - move::COUNT_GRIP) {
@@ -253,6 +259,10 @@ namespace grip {
         for (int r = 0; r < regrip::COUNT; r++) {
           if (move_cubes[m][r] != INVALID) {
             mul(c, move_cubes[m][r], tmp);
+            if (m < move::COUNT_CUBE) {
+              if (tmp.blocked[2 * other_ax] && tmp.blocked[2 * other_ax + 1])
+                continue;
+            }
             if (valid(tmp))
               nextstate[state][m][r] = get_state(tmp);
           }

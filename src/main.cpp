@@ -60,21 +60,33 @@ void warmup(solve::Engine& solver, int count) {
   std::cout << "Done." << std::endl << std::endl;
 }
 
-bool check(const cubie::cube &c, const std::vector<int>& sol) {
+bool check(
+  const cubie::cube &c, const std::vector<int>& sol, const std::vector<int> parg, const std::vector<int> blog
+) {
   cubie::cube c1;
   cubie::cube c2;
   int tilt = 0;
+  int grip = 0; // we use table-based transitions as simple multiplying does not some invalid transitions
 
   c1 = c;
-  for (int m : sol) {
-    int m1 = tilt::itrans_move[tilt][m];
-    if (!move::in(m1, tilt::moves[tilt]))
-      return false;
-    if (m1 < move::COUNT_CUBE) {
-      cubie::mul(c1, move::cubes[m1], c2);
-      std::swap(c1, c2);
+  for (int i = 0; i < sol.size(); i++) {
+    int m = tilt::itrans_move[tilt][sol[i]];
+    if (m == move::G) {
+      int tmp = grip::nextstate[grip][blog[i]][parg[i]];
+      if (tmp == -1)
+        return false;
+      grip = tmp;
+    } else {
+      int tmp = grip::nextstate[grip][sol[i]][parg[i]];
+      if (tmp == -1)
+        return false;
+      if (m < move::COUNT_CUBE) {
+        cubie::mul(c1, move::cubes[m], c2);
+        std::swap(c1, c2);
+      }
+      grip = tmp;
     }
-    tilt = tilt::move_coord[tilt][m1];
+    tilt = tilt::move_coord[tilt][m];
   }
 
   return c1 == cubie::SOLVED_CUBE;
@@ -221,7 +233,7 @@ int main(int argc, char *argv[]) {
           ).count() / 1000.;
           solver.finish();
 
-          if (tmp.size() == 0 || !check(cubes[i], tmp[sol])) {
+          if (tmp.size() == 0 || !check(cubes[i], tmp[sol], parg, blog)) {
             std::cout << face::from_cubie(cubes[i]) << std::endl;
             failed++;
           } else

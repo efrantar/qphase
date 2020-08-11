@@ -92,6 +92,12 @@ namespace grip {
     return !(c1 == c2);
   }
 
+  /*
+   * Approximation:
+   * - Cuts by two consecutive non-regrip moves
+   * - For regrips consider multiple states
+   */
+
   // Only supposed to be called with actually executable solutions (i.e. with correct stateset transitions)
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog) {
     if (!sol.size()) // best avoid any trouble

@@ -299,20 +299,24 @@ int main(int argc, char *argv[]) {
       int sol;
       std::vector<int> parg;
       std::vector<int> blog;
-      int score = best(sols, sol, parg, blog);
+
+      for (std::vector<int>& sol : sols) {
+        int len = sol.size();
+
+        std::vector<int> parg;
+        std::vector<int> blog;
+        int score = grip::optim(sol, parg, blog);
+
+        for (int i = 0; i < len; i++) {
+          int m = sol[i];
+          std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+        }
+        std::cout << "{" << len << " | " << score << "}" << std::endl;
+      }
 
       std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::high_resolution_clock::now() - tick
       ).count() / 1000. << "ms" << std::endl;
-
-      int len = sols[sol].size();
-      if (len == 0)
-        continue;
-      for (int i = 0; i < len; i++) {
-        int m = sols[sol][i];
-        std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
-      }
-      std::cout << "{" << len << " | " << score << "}" << std::endl;
     }
   }
   solver.finish(); // clean exit

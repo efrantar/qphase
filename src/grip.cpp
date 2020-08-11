@@ -122,8 +122,8 @@ namespace grip {
               int state1 = nextstate[state][m1][r];
               if (state1 == -1)
                 continue;
-              if (dp[i][state] + score[state][sol[i]][r] > dp[i + 1][state1]) {
-                dp[i + 1][state1] = dp[i][state] + score[state][sol[i]][r];
+              if (dp[i][state] + score[state][m1][r] > dp[i + 1][state1]) {
+                dp[i + 1][state1] = dp[i][state] + score[state][m1][r];
                 pd[i + 1][state1] = state;
                 pd1[i + 1][state1] = r;
                 pd2[i + 1][state1] = m1;
@@ -192,7 +192,9 @@ namespace grip {
           if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
             continue;
         } else if (m >= move::COUNT - move::COUNT_GRIP) { // anchored face needs to be unblocked
-          int f = m - (move::COUNT - move::COUNT_GRIP);
+          if (m == move::G)
+            continue;
+          int f = m - move::COUNT;
           if (c.blocked[f])
             continue;
         }
@@ -251,7 +253,9 @@ namespace grip {
           if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
             continue;
         } else if (m >= move::COUNT - move::COUNT_GRIP) {
-          int f = m - (move::COUNT - move::COUNT_GRIP);
+          if (m == move::G)
+            continue;
+          int f = m - move::COUNT;
           if (c.blocked[f])
             continue;
         }

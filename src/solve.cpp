@@ -128,9 +128,7 @@ namespace solve {
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
       for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt, inv, dirtilt), tmp); togo1 < lenlim - depth; togo1++) {
-        // We don't want to block any moves here as this might cause us to require another full search with
-        // a higher depth if we happen to get unlucky (~10% performance loss); same for `qt_skip`
-        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt], stateset))
+        if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt] & move::next[moves[depth - 1]], stateset))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
       return;

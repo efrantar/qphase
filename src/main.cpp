@@ -300,6 +300,10 @@ int main(int argc, char *argv[]) {
       std::vector<int> parg;
       std::vector<int> blog;
 
+      std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now() - tick
+      ).count() / 1000. << "ms" << std::endl;
+
       for (std::vector<int>& sol : sols) {
         int len = sol.size();
 
@@ -313,10 +317,6 @@ int main(int argc, char *argv[]) {
         }
         std::cout << "{" << len << " | " << score << "}" << std::endl;
       }
-
-      std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now() - tick
-      ).count() / 1000. << "ms" << std::endl;
     }
   }
   solver.finish(); // clean exit

@@ -52,6 +52,10 @@ namespace grip {
     {{0, 0, 0, 0}, {0, 0, 1, 0}, {1, 0, 0, 0}, {0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 1, 0}, {0, 1, 1, 0}, {1, 1, 1, 0}}  // rB
   };
 
+  // TODO
+  // In some situations we can
+  const move::mask CUTOPTIONS = move::bit(move::R1L2) | move::bit(move::R2L1) | move::bit(move::F1B2) | move::bit(move::F2B1);
+
   int nextset[N_STATESETS][N_MOVES];
   int nextiset[N_STATESETS][N_MOVES];
   int nextstate[state::COUNT][N_MOVES][regrip::COUNT];
@@ -93,10 +97,90 @@ namespace grip {
   }
 
   /*
-   * Approximation:
-   * - Cuts by two consecutive non-regrip moves
-   * - For regrips consider multiple states
+   * - One extra DP state for every gripper state indicating a cutable scenario
+   * - 4 extra states indicating that a certain face did not move in a blocking state
+   *  - Note that we only have forced hard regrips and thus 4 states should be sufficient
    */
+
+  /*
+   * Always make the choice that
+   * Always make the choice that does a half-turn in vertical position
+   */
+
+  /*
+   * - Tilts + regrips never cutable
+   * - We can always cut two consecutive move without any regrips
+   * - Out cut: no regrip or half turn + regrip
+   * - In cut: no regrip
+   * - Out cut: half-turn + regrip that starts in horizontal, half-turn + quarter-turn
+   * - In cut: half turn + regrip that starts in vertical
+   * - tFB F [rB] R is cutable if not [rF] in next move (potentially ignore this case if too hard)
+   */
+  
+  // dp[len + 1][state::COUNT][regrip::COUNT]
+  // pd[len + 1][state::COUNT][regrip::COUNT]
+
+  const move::mask TILTMASK = move::bit(move::TRL) | move::bit(move::TFB);
+  const move::mask HALFMASK =
+    move::bit(move::R2) | move::bit(move::L2) | move::bit(move::R2L1) |
+    move::bit(move::R2L2) | move::bit(move::R2L3) | move::bit(move::R1L2) || move::bit(move::R3L2)
+  ;
+
+  // Transition guaranteed to be possible
+  const bool cut(int m1, int par1, int blog1, int state, int m2, int par2, int blog2) {
+    // There are no cuts when tilts are involved
+    if ((move::bit(m1) & TILTMASK) || (move::bit(m2) & TILTMASK))
+      return false;
+
+    cube c;
+    set_state(c, state);
+
+    if (m1 == move::G)
+      return false; // we cannot cut out of any regrip
+    if (m2 == move::G) { // TODO:
+
+    }
+    // Neither `m1` nor `m2` is a full regrip
+
+    int ax1 = m1 / 15 - 1;
+    int ax2 = m2 / 15 - 1;
+    bool half1 = HALFMASK & (m1 % 15);
+    bool half2 = HALFMASK & (m2 % 15);
+
+    if (half1) {
+      int otherax = 2 * !ax1;
+      if (c.blocked[otherax] || c.blocked[otherax + 1])
+        return false; // cannot cut when regripping into HT-face
+    }
+
+    if (!half2) {
+      if (par2 != regrip::_)
+        return false; // cannot cut into a non-HT with any kind of regrip
+    } else {
+      if (!half1) {
+        int otherax = 2 * !ax2;
+
+        // Cannot cut when we have to open a gripper before the HT
+        if (c.blocked[otherax] && MOVE_CUBES[m1][regrip::_].blocked[otherax])
+          return false;
+        if (c.blocked[otherax + 1] && MOVE_CUBES[m1][regrip::_].blocked[otherax + 1])
+          return false;
+
+        // Cannot cut when current pivot was regripped in previous move
+        if (par1 == regrip::A2) {
+          bool piv1 = MOVE_CUBES[m2][par2].blocked[otherax] == 0;
+          bool piv2 = MOVE_CUBES[m2][par2].blocked[otherax = 1] == 0;
+          bool reg1 = !MOVE_CUBES[m1][regrip::_].blocked[otherax] && MOVE_CUBES[m1][par1].blocked[otherax];
+          bool reg2 = !MOVE_CUBES[m1][regrip::_].blocked[otherax + 1] && MOVE_CUBES[m1][par1].blocked[otherax + 1];
+          if (piv1 != piv2) { // no problem if we have 2 pivots
+            if (piv1 && reg1 || piv2 && reg2)
+              return false;
+          }
+        }
+      }
+    }
+
+  }
 
   // Only supposed to be called with actually executable solutions (i.e. with correct stateset transitions)
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog) {
@@ -106,6 +190,7 @@ namespace grip {
     int len = sol.size();
     parg.resize(len);
     blog.resize(len);
+    int n_states = 2 * state::COUNT;
 
     int dp[len + 1][state::COUNT];
     int pd[len + 1][state::COUNT];

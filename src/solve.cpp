@@ -159,6 +159,8 @@ namespace solve {
 
       // Check inside loop to avoid unnecessary recursion unwinds
       if (dist1 == togo || dist1 + togo >= 5) { // Rokicki optimization
+        if (m == move::TRL || m == move::TFB) // no moves on previously reachable axes
+          next1 &= ~tilt::moves[tilt];
         if (m == move::G && !regrip) // only explore forced regrips
           continue;
         regrip = false;
@@ -220,6 +222,9 @@ namespace solve {
 
         moves[depth] = m;
         move::mask next1 = move::p2mask & move::next[m] & tilt::moves[tilt1];
+        if (m == move::TRL || m == move::TFB)
+          next1 &= ~tilt::moves[tilt];
+
         if (phase2(depth + 1, togo - 1, slice1, udedges21, corners1, tilt1, next1, stateset1))
           return true; // return as soon as we have a solution
       }

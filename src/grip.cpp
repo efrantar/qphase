@@ -97,15 +97,13 @@ namespace grip {
     return !(c1 == c2);
   }
 
-  // Not handled: half -> simple + par regrip; if par regrip has not been regripped in previous move
   int cut(int m, int r, int mprev, int rprev) {
     if (m >= move::TRL || mprev >= move::TRL)
       return score[0][m][r]; // we can never cut with a tilt/regrip involved
     if (m % 15 < 6 && (m % 15) % 3 != 1) { // simple move
       if (r == regrip::_) // if no regrip
         return SSCORE + CSCORE;
-      // If prev move was a half-turn with at most a parallel regrip
-      if (((mprev % 15) == 10 || (mprev % 15 % 3) == 1) && rprev <= regrip::A2)
+      if (((mprev % 15) == 10 || (mprev % 15 % 3) == 1)) // if prev move was a half-turn
         return SSCORE + CSCORE;
       return SSCORE;
     }
@@ -116,6 +114,9 @@ namespace grip {
     }
     return SSCORE + CSCORE; // in all other legal cases we can cut
   }
+  // TODO: (R [rL] tRL) requires us to wait extra, regrip on tilt axis if other side is blocked
+  // TODO: first move parallel regrip
+  // TODO: last move always cuts
 
   // Only supposed to be called with actually executable solutions (i.e. with correct stateset transitions)
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog) {

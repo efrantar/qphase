@@ -54,8 +54,20 @@ namespace grip {
 
   const int SSCORE = 1; // save moves
   const int CSCORE = 100; // cuts
-  const int risky_ax[] = {-1, -1, -1, -1}; // TODO
+  const move::mask risky[] = {
+    0, 0,
+    move::bit(move::F1) | move::bit(move::B3) | move::bit(move::F1B3),
+    move::bit(move::F3) | move::bit(move::B1) | move::bit(move::F3B1),
+    move::bit(move::R1) | move::bit(move::L3) | move::bit(move::R1L3),
+    move::bit(move::R3) | move::bit(move::L1) | move::bit(move::R3L1)
+  }; // single supported moves that turn away from support
 
+  const int CSIMP = 80;
+  const int CHALF = 120;
+  const int CGRIP = 20;
+  const int cost[] = {
+    CSIMP, CHALF, CSIMP, CSIMP, CHALF, CSIMP, CSIMP, CHALF, CSIMP, CHALF, CHALF, CHALF, CSIMP, CHALF, CHALF
+  };
 
   int nextset[N_STATESETS][N_MOVES];
   int nextiset[N_STATESETS][N_MOVES];
@@ -97,10 +109,12 @@ namespace grip {
     return !(c1 == c2);
   }
 
+  inline bool simple(int m) { return m % 16 < 6 && (m % 15) % 3 != 1; }
+
   int cut(int m, int r, int mprev, int rprev) {
     if (m >= move::TRL || mprev >= move::TRL)
       return score[0][m][r]; // we can never cut with a tilt/regrip involved
-    if (m % 15 < 6 && (m % 15) % 3 != 1) { // simple move
+    if (simple(m)) { // simple move
       if (r == regrip::_) // if no regrip
         return SSCORE + CSCORE;
       if (((mprev % 15) == 10 || (mprev % 15 % 3) == 1)) // if prev move was a half-turn
@@ -108,15 +122,12 @@ namespace grip {
       return SSCORE;
     }
     // Simple prev move + par regrip -> axial
-    if (mprev % 15 < 6 && (mprev % 15) % 3 != 1 && rprev == regrip::A2 && m % 15 > 6) { // rprev is 0 if possible
-      if (m == risky_ax[2 * (mprev / 15) + (mprev % 15) / 3]) // move may be risky
+    if (simple(mprev) && rprev == regrip::A2 && m % 15 > 6) { // rprev is 0 if possible
+      if (move::in(m, risky[2 * (mprev / 15) + (mprev % 15) / 3])) // move may be risky
         return CSCORE;
     }
     return SSCORE + CSCORE; // in all other legal cases we can cut
   }
-  // TODO: (R [rL] tRL) requires us to wait extra, regrip on tilt axis if other side is blocked
-  // TODO: first move parallel regrip
-  // TODO: last move always cuts
 
   // Only supposed to be called with actually executable solutions (i.e. with correct stateset transitions)
   int optim(const std::vector<int>& sol, std::vector<int>& parg, std::vector<int>& blog) {
@@ -131,11 +142,11 @@ namespace grip {
     int pd[len + 1][state::COUNT];
     int pd1[len + 1][state::COUNT];
     int pd2[len + 1][state::COUNT];
-    std::fill(dp[0], dp[0] + (len + 1) * state::COUNT, -1);
+    std::fill(dp[0], dp[0] + (len + 1) * state::COUNT, -1000);
     dp[0][0] = 0;
 
     int stateset = DEFAULTSET;
-    for (int i = 0; i < sol.size(); i++) {
+    for (int i = 0; i < len; i++) {
       int m = sol[i];
 
       for (int state = 0; state < state::COUNT; state++) {
@@ -143,13 +154,22 @@ namespace grip {
           continue;
 
         for (int r = 0; r < regrip::COUNT; r++) {
+          // Simple move + par regrip on first move requires extra waiting
+          int score1 = (i == 0 && simple(m) && r == regrip::A2) ? -CSCORE : 0;
+          if (i > 0 && state == grip::_)
+            score1 += cut(m, r, pd[i - 1][state], pd1[i - 1][state]);
+          else
+            score1 += score[state][m][r];
+
           if (m == move::G) {
+            // Full regrips are so rare that we don't handle the extra waiting cases specifically
+            score1 -= CSCORE;
             for (int m1 = move::COUNT; m1 < N_MOVES; m1++) {
               int state1 = nextstate[state][m1][r];
               if (state1 == -1)
                 continue;
-              if (dp[i][state] + score[state][m1][r] > dp[i + 1][state1]) {
-                dp[i + 1][state1] = dp[i][state] + score[state][m1][r];
+              if (dp[i][state] + score1 > dp[i + 1][state1]) {
+                dp[i + 1][state1] = dp[i][state] + score1;
                 pd[i + 1][state1] = state;
                 pd1[i + 1][state1] = r;
                 pd2[i + 1][state1] = m1;
@@ -162,10 +182,10 @@ namespace grip {
           if (state1 == -1)
             continue;
           if (
-            dp[i][state] + score[state][m][r] > dp[i + 1][state1] ||
-            (dp[i][state] + score[state][m][r] == dp[i + 1][state1] && r < pd1[i + 1][state1]) // prefer lower rs
+            dp[i][state] + score1 > dp[i + 1][state1] ||
+            (dp[i][state] + score1 == dp[i + 1][state1] && r < pd1[i + 1][state1]) // prefer lower rs
           ) {
-            dp[i + 1][state1] = dp[i][state] + score[state][m][r];
+            dp[i + 1][state1] = dp[i][state] + score1;
             pd[i + 1][state1] = state;
             pd1[i + 1][state1] = r;
           }
@@ -188,7 +208,10 @@ namespace grip {
       s = pd[i][s];
     }
 
-    return dp[len][best_s];
+    int ret = -CGRIP; // last move always cuts
+    for (int m : sol)
+      ret += (m < move::TRL) ? cost[m % 15] : CSIMP;
+    return 100 * (ret - CGRIP * (dp[len][best_s] / 100)) + (len - dp[len][best_s] % 100); // number of risky moves
   }
 
   void init() {
@@ -306,20 +329,23 @@ namespace grip {
     for (int state = 0; state < state::COUNT; state++) {
       set_state(c, state);
       for (int m = 15; m < N_MOVES; m++) {
-        if (m >= move::COUNT_CUBE && m < move::COUNT - move::COUNT_GRIP) { // tilts are always safe
+        if (m >= move::TRL) { // tilts and regrips are always safe
           std::fill(score[state][m], score[state][m] + regrip::COUNT, 1);
           continue;
         }
         for (int r = 0; r < regrip::COUNT; r++) {
           if (move_cubes[m][r] != INVALID) {
             int count = 0;
+            int supp = -1;
             for (int i = 0; i < 4; i++) {
-              if (!move_cubes[m][0].blocked[i])
+              if (!move_cubes[m][0].blocked[i]) {
                 count += !move_cubes[m][r].blocked[i] && !c.blocked[i];
+                supp = i;
+              }
               // Note that it is sufficient to count the non-moved non-blocked grippers to determine whether or
               // not a move is safe
             }
-            score[state][m][r] = count >= 2;
+            score[state][m][r] = (count == 1 && move::in(m, risky[2 + supp])) ? 0 : SSCORE;
           }
         }
       }

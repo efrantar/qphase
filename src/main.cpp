@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     usage();
   }
 
-  std::cout << "This is qphase v0.9; copyright Elias Frantar 2020." << std::endl << std::endl;
+  std::cout << "This is qphase v1.0; copyright Elias Frantar 2020." << std::endl << std::endl;
   init();
   solve::Engine solver(n_threads, tlim, n_sols, max_len, n_splits);
   warmup(solver, n_warmups);
@@ -325,8 +325,6 @@ int main(int argc, char *argv[]) {
       ).count() / 1000. << "ms" << std::endl;
 
       int len = sols[sol].size();
-      if (len == 0)
-        continue;
       for (int i = 0; i < len; i++) {
         int m = sols[sol][i];
         std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";

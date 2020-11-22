@@ -119,7 +119,7 @@ int best(
     std::vector<int> parg1;
     std::vector<int> blog1;
     int score1 = grip::optim(sols[i], parg1, blog1);
-    if (score1 < score) {
+    if (score1 > score) {
       score = score1;
       sol = i;
       parg = std::move(parg1); // we don't need the vector anymore afterwards
@@ -212,8 +212,7 @@ int main(int argc, char *argv[]) {
 
         std::vector<std::vector<int>> sols;
         std::vector<int> times(cubes.size());
-        std::vector<int> exec(cubes.size());
-        std::vector<int> risky(cubes.size());
+        std::vector<int> scores(cubes.size());
         int failed = 0;
 
         std::cout << "Benchmarking ..." << std::endl;
@@ -228,9 +227,7 @@ int main(int argc, char *argv[]) {
           int sol;
           std::vector<int> parg;
           std::vector<int> blog;
-          int score = best(tmp, sol, parg, blog);
-          exec[i] = score / 100;
-          risky[i] = score % 100;
+          scores[i] = best(tmp, sol, parg, blog);
 
           times[i] = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - tick
@@ -248,8 +245,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Failed: " << failed << std::endl;
         std::cout << "Avg. Time: " << std::accumulate(times.begin(), times.end(), 0.) / times.size() << " ms" << std::endl;
         std::cout << "Avg. Moves: " << mean(sols, len) << std::endl;
-        std::cout << "Avg. Exec: " << std::accumulate(exec.begin(), exec.end(), 0.) / exec.size() << std::endl;
-        std::cout << "Avg. Risky: " << std::accumulate(risky.begin(), risky.end(), 0.) / risky.size() << std::endl;
+        std::cout << "Avg. Score: " << std::accumulate(scores.begin(), scores.end(), 0.) / scores.size() << std::endl;
 
         int freq[100];
         int min = 100;
@@ -264,21 +260,6 @@ int main(int argc, char *argv[]) {
         std::cout << "Move Distribution:" << std::endl;
         for (int len = min; len <= max; len++)
           std::cout << len << ": " << freq[len] << std::endl;
-        std::cout << std::endl;
-
-        std::fill(freq, freq + 100, 0);
-        min = 100;
-        max = 0;
-        for (int e : exec) {
-          int e1 = (e + 49) / 50; // ceil-div
-          freq[e1]++;
-          min = std::min(min, e1);
-          max = std::max(max, e1);
-        }
-
-        std::cout << "Exec Distribution:" << std::endl;
-        for (int e = min; e <= max; e++)
-          std::cout << 50 * (e - 1) << "-" << 50 * e << ": " << freq[e] << std::endl;
         std::cout << std::endl;
       } catch (...) { // any file reading errors
         std::cout << "Error." << std::endl;
@@ -324,12 +305,19 @@ int main(int argc, char *argv[]) {
         std::chrono::high_resolution_clock::now() - tick
       ).count() / 1000. << "ms" << std::endl;
 
-      int len = sols[sol].size();
-      for (int i = 0; i < len; i++) {
-        int m = sols[sol][i];
-        std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+      for (std::vector<int>& sol : sols) {
+        int len = sol.size();
+
+        std::vector<int> parg;
+        std::vector<int> blog;
+        int score = grip::optim(sol, parg, blog);
+
+        for (int i = 0; i < len; i++) {
+          int m = sol[i];
+          std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+        }
+        std::cout << "{" << len << " | " << score << "}" << std::endl;
       }
-      std::cout << "{" << len << " | " << score / 100 << " | " << score % 100 << "}" << std::endl;
     }
   }
   solver.finish(); // clean exit

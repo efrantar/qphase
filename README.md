@@ -4,14 +4,14 @@ This is the solving algorithm powering [Cuboth](), the (as of December 2020) wor
 
 **NOTE:** *The primary purpose of this repository is to document the various new techniques that were necessary to adapt Herbert Kociemba's two-phase algorithm for finding solutions particularly efficient with respect to advanced quad-arm robot mechanics (the code here is however of course fully executable). If you are just looking for a very efficient off-the-shelf solver to use in your own projects, you should probably be looking at [`rob-twophase`](https://github.com/efrantar/rob-twophase) (unless you are working on a robot very similar to Cuboth).*
 
-Now follows a rather detailed description of the `qphase` algorithm. Note that the following text assumes good familarity with Kociemba's two-phase algorithm (see for example [Kociemba's website](http://kociemba.org/cube.htm) or Tomas Rokicki's extensively documented implementation in [`cube20src`](http://kociemba.org/cube.htm)).
+Now follows a rather detailed description of main ideas behind the `qphase` algorithm. Note that the following text assumes good familarity with Kociemba's two-phase algorithm (see for example [Kociemba's website](http://kociemba.org/cube.htm) or Tomas Rokicki's extensively documented implementation in [`cube20src`](http://kociemba.org/cube.htm)).
 
-# General Considerations
+## General Considerations
 
-# Tilts
+## Tilts
 
-# Gripper States
+## Gripper States
 
-# Search Details
+## Search Details
 
-# Optimal Regrips
+## Optimal Regrips

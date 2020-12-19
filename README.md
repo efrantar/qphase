@@ -16,6 +16,10 @@ Still, the basis of the `qphase` algorithm is `rob-twophase` and since a quad-ar
 
 ## Tilts
 
+The biggest mechanical restriction of a quad-arm robot is that it cannot directly turn the top and bottom face of the cube meaning that it generally has to perform several cube rotations, we call those *tilts*, throughout a solve. Since standard solutions may require a lot of tilts we want to code this information directly into the pruning tables. 
+
+There are 24 different ways to hold a cube. Naively augmenting the standard phase1/phase2 pruning tables with this `TILT` coordinate would result in a 24x memory increase. This is problematic as the original tables already require > 1 GB of RAM (with an axial version of Rokicki's extended phase 1 table). Fortunately, `TILT` is highly symmetric. As long as the axis that cannot currently be turned is the same, we can always symmetry transform (with respect to *robot symmetry*) a solution with `tilt1` into one for the same cube in `tilt2`. Therefore, we can symmetry reduce `TILT` to only 3 different states and consequently achieve an 8x memory reduction. Actually implementing this is however quite tricky because the standard Kociemba algorithm already utilizes *cube symmetry* which is not independent of the cube's `TILT` as a symmetry transformation can change the axis that cannot currently be turned. Thus, to perform a *double symmetry reduction* we first have to reduce the current state with respect to cube symmetry, then adjust the `TILT` if necessary (via conjugation) to get an actually equivalent state and finally symmetry reduce the `TILT` with respect to robot symmetry. Overall this makes for a very efficient (both in memory and in runtime) method for fully considering cube rotations during the search.
+
 ## Gripper States
 
 ## Search Details

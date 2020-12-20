@@ -37,3 +37,7 @@ Unfotunately, there is also a more profound problem caused by the fact that a se
 After going through all of those hassles, `qphase` can indeed also utilize inverse searches to find short solutions even faster.
 
 ## Optimal Regrips
+
+Previously we discussed that the `qphase` algorithm considers regrips only implicitly while searching for a solution. This means a returned solution is guaranteed to be executable without any extra full regrips but it does not tell us how to achive that. An explicity parallel regripping schedule can be figured out efficiently via dynamic programming. However, we can take things one step further and not just find any schedule but the "best" according to some criteria (there are usually several possible ways of executing the same solution). Here we compute the *safest* to execute, i.e. the solution where the most moves are supported by at least to stationary grippers (there is generally a higher chance of something going wrong when a move is only supported by a single stationary gripper). While this is certainly not the most critical optimization it is essentially free from a computational standpoint, so we might as well take it.
+
+Finally, `qphase` returns multiple solutions allowing further small timesaves by rating them (before selecting the best one) according to robot intricacies (e.g. reliably executing some specific moves may require some extra delay, etc.) that cannot directly be integrated (or would not be worth integrating) into the search process. For Cuboth this saves an additional ~50 milliseconds on average.

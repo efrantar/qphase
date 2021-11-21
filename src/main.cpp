@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <fstream>
 #include <getopt.h>
+#include <ios>
 #include <iostream>
 #include <vector>
 #include <numeric>
@@ -131,6 +132,10 @@ int best(
 }
 
 int main(int argc, char *argv[]) {
+  // Fast IO for group solving
+  std::ios_base::sync_with_stdio(false);
+  std::cin.tie(NULL);
+
   int n_threads = 1;
   int tlim = 10;
   int n_sols = 1;
@@ -180,7 +185,7 @@ int main(int argc, char *argv[]) {
     usage();
   }
 
-  std::cout << "This is qphase v1.0; copyright Elias Frantar 2020." << std::endl << std::endl;
+  std::cout << "This is qphase v1.1; copyright Elias Frantar 2021." << std::endl << std::endl;
   init();
   solve::Engine solver(n_threads, tlim, n_sols, max_len, n_splits);
   warmup(solver, n_warmups);
@@ -267,7 +272,11 @@ int main(int argc, char *argv[]) {
       }
     } else {
       cubie::cube c;
+      std::vector<cubie::cube> cubes;
       std::vector<std::vector<int>> sols;
+      std::vector<int> costs;
+      std::vector<int> statesets;
+      std::vector<int> ids;
 
       if (mode == "solve") {
         std::string fcube;
@@ -283,11 +292,35 @@ int main(int argc, char *argv[]) {
           std::cout << "Cubie-error " << err << "." << std::endl;
           continue;
         }
+      } else if (mode == "group") {
+          std::string fcube;
+          int cost;
+          int stateset;
+          int err = 0;
+          while (true) {
+            std::cin >> fcube;
+            if (fcube == "solve")
+              break;
+            std::cin >> cost;
+            std::cin >> stateset;
+            cubie::cube c;
+            err = face::to_cubie(fcube, c);
+            if (err)
+              break;
+            cubes.push_back(c);
+            costs.push_back(cost);
+            statesets.push_back(stateset);
+          }
+          if (err) {
+            std::cout << "Cubie-error" << err << "." << std::endl;
+            continue;
+          }
       } else if (mode == "scramble") {
         cubie::shuffle(c);
         cubie::cube tmp;
         cubie::inv(c, tmp);
-        std::cout << face::from_cubie(tmp) << std::endl; // the solution we find will actually be a scramble for the inverse cube
+        // The solution we find will actually be a scramble for the inverse cube
+        std::cout << face::from_cubie(tmp) << std::endl;
       } else {
         std::cout << "Error." << std::endl;
         continue;
@@ -295,28 +328,47 @@ int main(int argc, char *argv[]) {
 
       auto tick = std::chrono::high_resolution_clock::now();
 
-      solver.solve(c, sols);
-      int sol;
-      std::vector<int> parg;
-      std::vector<int> blog;
-      int score = best(sols, sol, parg, blog);
-
+      if (mode == "group")
+        ids = solver.groupsolve(cubes, costs, statesets, sols);
+      else
+        solver.solve(c, sols);
+      
       std::cout << std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::high_resolution_clock::now() - tick
       ).count() / 1000. << "ms" << std::endl;
 
-      for (std::vector<int>& sol : sols) {
-        int len = sol.size();
-
-        std::vector<int> parg;
-        std::vector<int> blog;
-        int score = grip::optim(sol, parg, blog);
-
-        for (int i = 0; i < len; i++) {
-          int m = sol[i];
-          std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+      if (mode == "group") {
+        for (int i = 0; i < ids.size(); i++) {
+          std::cout << ids[i];
+          if (i != ids.size() - 1)
+            std::cout << " ";
         }
-        std::cout << "{" << len << " | " << score << "}" << std::endl;
+        std::cout << std::endl;
+      }
+
+      if (mode == "group") {
+        int j = 0;
+        for (std::vector<int>& sol : sols) {
+          int len = sol.size();
+          for (int m : sol)
+            std::cout << move::names[m] << " ";
+          std::cout << "{" << costs[ids[j]] << " + " << len << " = " << (costs[ids[j]] + len) << "}" << std::endl;
+          j++;
+        }
+      } else {
+        for (std::vector<int>& sol : sols) {
+          int len = sol.size();
+          
+          std::vector<int> parg;
+          std::vector<int> blog;
+          int score = grip::optim(sol, parg, blog);
+
+          for (int i = 0; i < len; i++) {
+            int m = sol[i];
+            std::cout << move::names[m] << " " << grip::move_names[(m == move::G) ? blog[i] : m][parg[i]] << " ";
+          }
+          std::cout << "{" << len << " | " << score << "}" << std::endl;
+        }
       }
     }
   }

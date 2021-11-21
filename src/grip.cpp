@@ -3,6 +3,8 @@
 #include <numeric>
 #include "move.h"
 
+#include <iostream> // TODO: remove
+
 namespace grip {
 
   const cube INVALID = {-1, -1, -1, -1}; // we need to distinguish invalid temporary move cubes and truly invalid states
@@ -178,6 +180,21 @@ namespace grip {
         // G move remains uninitialized
       }
     }
+#ifdef SAFE
+    // Forbid moves that only turn away from single support
+    move_cubes[move::R1][regrip::A2B2] = INVALID;
+    move_cubes[move::R3][regrip::A2B1] = INVALID;
+    move_cubes[move::L1][regrip::A2B1] = INVALID;
+    move_cubes[move::L3][regrip::A2B2] = INVALID;
+    move_cubes[move::R1L3][regrip::B2] = INVALID;
+    move_cubes[move::R3L1][regrip::B1] = INVALID;
+    move_cubes[move::F1][regrip::A2B1] = INVALID;
+    move_cubes[move::F3][regrip::A2B2] = INVALID;
+    move_cubes[move::B1][regrip::A2B2] = INVALID;
+    move_cubes[move::B3][regrip::A2B1] = INVALID;
+    move_cubes[move::F1B3][regrip::B1] = INVALID;
+    move_cubes[move::F3B1][regrip::B2] = INVALID;
+#endif
 
     cube c;
     cube tmp;
@@ -187,7 +204,7 @@ namespace grip {
 
       for (int m = 15; m < N_MOVES; m++) {
         int other_ax;
-        if (m < move::COUNT_CUBE) { // there needs to be at least on support on the orthogonal axis
+        if (m < move::COUNT_CUBE) { // there needs to be at least one support on the orthogonal axis
           other_ax = !(m / 15 - 1);
           if (c.blocked[2 * other_ax] && c.blocked[2 * other_ax + 1])
             continue;
@@ -207,6 +224,14 @@ namespace grip {
             if (tmp.blocked[2 * other_ax] && tmp.blocked[2 * other_ax + 1]) // stuff like "[rR] F2 [rL]" is impossible
               continue;
           }
+#ifdef SAFE
+          // Open grippers must always be vertical after a tilt for safe stopping
+          if (m == move::TRL || m == move::TFB) {
+            int ax = m - move::TRL;
+            if (!tmp.blocked[2 * ax] && !tmp.blocked[2 * ax + 1] && get_state(tmp) != RLFB)
+              continue;
+          }
+#endif
           if (valid(tmp)) {
             int state1 = get_state(tmp);
             for (int stateset = 0; stateset < N_STATESETS; stateset++) {
@@ -242,6 +267,7 @@ namespace grip {
       }
     }
 
+    // TODO: integrate this into the loop above
     std::fill(nextstate[0][0], nextstate[0][0] + state::COUNT * N_MOVES * regrip::COUNT, - 1);
     for (int state = 0; state < state::COUNT; state++) {
       set_state(c, state);

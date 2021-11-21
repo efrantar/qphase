@@ -6,6 +6,7 @@
 #define __SOLVE__
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <utility>
@@ -57,6 +58,18 @@ namespace solve {
     std::mutex tout_mtx;
     std::condition_variable tout_cvar;
 
+    // Only used for group solving; normal solving mode should stay completely untouched 
+    bool group = false;
+    struct job {
+      coordc cube;
+      int stateset;
+      int dir;
+    };
+    std::vector<job> jobs;
+    std::vector<int> dists;
+    std::vector<int> extras;
+    std::priority_queue<int, std::vector<int>, std::function<bool(int, int)>> jobpq;
+
     public:
       Engine(
         int n_threads, int tlim,
@@ -64,10 +77,16 @@ namespace solve {
       );
       void prepare(); // setup all threads
       void solve(const cubie::cube& c, std::vector<std::vector<int>>& res); // actual solve
+      std::vector<int> groupsolve(
+        const std::vector<cubie::cube>& cubes, 
+        const std::vector<int>& costs, const std::vector<int>& statesets,
+        std::vector<std::vector<int>>& res
+      );
       void finish(); // wait for all threads to shutdown (mostly for clean program exit)
       void report_sol(searchres& sol); // report a solution; never call this from the outside
 
     void thread(); // search thread
+    std::vector<int> solve(std::vector<std::vector<int>>& res); // common solve routine
 
   };
 

@@ -85,7 +85,7 @@ namespace move {
     U3, U2, U1, D3, D2, D1, U3D3, U3D2, U3D1, U2D3, U2D2, U2D1, U1D3, U1D2, U1D1,
     R3, R2, R1, L3, L2, L1, R3L3, R3L2, R3L1, R2L3, R2L2, R2L1, R1L3, R1L2, R1L1,
     F3, F2, F1, B3, B2, B1, F3B3, F3B2, F3B1, F2B3, F2B2, F2B1, F1B3, F1B2, F1B1,
-    -1, -1, -1 // we don't need inverses for rotations
+    TRL, TFB, G // the true tilt inverse turn in the other direction, but this does not matter for grip calculations 
   };
 
   extern mask next[COUNT]; // successor moves that should be explored

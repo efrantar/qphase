@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <iostream> // TODO: remove
 #include <strings.h>
 #include <thread>
 
@@ -53,6 +54,8 @@ namespace solve {
     bool& done; // when to terminate the search
     int& lenlim; // only find strictly shorter solutions
     Engine& solver; // report solutions to
+    int extra; // additional solution cost, relevant for group solves
+    int startset;
 
     /* Keep track of reconstructed edges that remain valid in the current search path */
     int uedges[50];
@@ -77,8 +80,12 @@ namespace solve {
       int dir,
       const coordc& cube,
       int p1depth, move::mask d0moves,
-      bool& done, int& lenlim, Engine& solver
-    ) : dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(lenlim), solver(solver) {};
+      bool& done, int& lenlim, Engine& solver,
+      int extra = 0, int startset = 1
+    ) : 
+      dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(lenlim), solver(solver), 
+      extra(extra), startset(startset) 
+    {};
     void run(); // perform the search
 
   };
@@ -106,7 +113,7 @@ namespace solve {
       prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
       next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
       edges_depth = 0;
-      phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, 1);
+      phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, startset);
     }
   }
 
@@ -117,7 +124,7 @@ namespace solve {
       return;
     if (togo == 0) {
       int tmp = prun::get_precheck(corners, slice, tilt, inv, dirtilt);
-      if (tmp >= lenlim - depth) // phase 2 precheck, only reconstruct edges if successful
+      if (tmp >= lenlim - depth - extra) // phase 2 precheck, only reconstruct edges if successful
         return;
 
       for (int i = edges_depth + 1; i <= depth; i++) {
@@ -127,7 +134,11 @@ namespace solve {
       edges_depth = depth - 1;
       int udedges2 = coord::merge_udedges2(uedges[depth], dedges[depth]);
 
-      for (int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt, inv, dirtilt), tmp); togo1 < lenlim - depth; togo1++) {
+      for (
+        int togo1 = std::max(prun::get_phase2(corners, udedges2, tilt, inv, dirtilt), tmp);
+        togo1 < lenlim - depth - extra;
+        togo1++
+      ) {
         if (phase2(depth, togo1, slice, udedges2, corners, tilt, move::p2mask & tilt::moves[tilt] & move::next[moves[depth - 1]], stateset))
           return; // once we have found a phase 2 solution, there cannot be any shorter ones -> quit
       }
@@ -185,12 +196,14 @@ namespace solve {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
         return false;
-      if (inv && !(stateset & 1)) // neutral state must be reachable when we want to invert the solution
+      if (inv && !(stateset & startset)) // move in startset must be reachable when we want to invert the solution
         return false;
 
-      searchres sol = {std::vector<int>(depth), (dir << 1) | (inv ? FLIP_TILTS[tilt] : 0) };
+      searchres sol = {std::vector<int>(depth + extra), (dir << 1) | (inv ? FLIP_TILTS[tilt] : 0)};
       for (int i = 0; i < depth; i++)
         sol.first[i] = moves[i];
+      for (int i = depth; i < depth + extra; i++) 
+        sol.first[i] = -1; // pad with invalid moves
       solver.report_sol(sol);
 
       return true; // we will not find any shorter solutions
@@ -257,20 +270,37 @@ namespace solve {
     do {
       /* Select next job to execute; don't forget to lock */
       job_mtx.lock();
-      for (int dir = 0; dir < N_DIRS; dir++) {
-        if (depths[dir] < depths[mindir])
-          mindir = dir;
-      }
-      int split = splits[mindir]++;
-      int togo = depths[mindir];
-      if (splits[mindir] == n_splits) {
-        depths[mindir]++;
-        splits[mindir] = 0;
-      }
-      job_mtx.unlock();
+      if (group) {
+        int i = jobpq.top();
+        int togo = dists[i];
+        jobpq.pop();
+        dists[i]++;
+        jobpq.push(i);
+        job_mtx.unlock();
+        Search search(
+          jobs[i].dir, jobs[i].cube, togo, masks[tilt::coord_cls[jobs[i].cube.tilt]][0], 
+          done, lenlim, *this, 
+          extras[i], jobs[i].stateset
+        );
+        search.run();
+      } else {
+        for (int dir = 0; dir < N_DIRS; dir++) {
+          if (depths[dir] < depths[mindir])
+            mindir = dir;
+        }
+        int split = splits[mindir]++;
+        int togo = depths[mindir];
+        if (splits[mindir] == n_splits) {
+          depths[mindir]++;
+          splits[mindir] = 0;
+        }
+        job_mtx.unlock();
 
-      Search search(mindir, dirs[mindir], togo, masks[tilt::coord_cls[dirs[mindir].tilt]][split], done, lenlim, *this);
-      search.run();
+        Search search(
+          mindir, dirs[mindir], togo, masks[tilt::coord_cls[dirs[mindir].tilt]][split], done, lenlim, *this
+        );
+        search.run();
+      }
     } while (!done); // we should never actually get to the truly optimal depth anyways in general
   }
 
@@ -286,6 +316,80 @@ namespace solve {
     done = false;
     lenlim = max_len > 0 ? max_len + 1: 50; // only search for strictly shorter solutions than this
     // `sols` is always emptied after a solve
+  }
+
+  std::vector<int> Engine::solve(std::vector<std::vector<int>>& res) {
+    job_mtx.unlock(); // start solving
+
+    { // timeout
+      std::unique_lock<std::mutex> lock(tout_mtx);
+      tout_cvar.wait_for(lock, std::chrono::milliseconds(tlim), [&]{ return done; });
+      if (!done)
+        done = true; // if we get here, this was a timeout
+    }
+    std::lock_guard<std::mutex> lock(sol_mtx); // make sure no thread is writing any more solutions
+
+    std::vector<int> ids(sols.size());
+    res.resize(sols.size());
+    for (int i = 0; i < res.size(); i++) {
+      const searchres& sol = sols.top();
+
+      int len = 0;
+      while (len < sol.first.size() && sol.first[len] != -1) // ignore extra padding moves
+        len++;
+      res[i].resize(len);
+      ids[i] = sol.second / (2 * N_DIRS); // we also have an extra flip bit 
+
+      int tmp = sol.second % (2 * N_DIRS);
+      bool flip = tmp & 1;
+      bool inv = (tmp >> 1) & 1;
+      int rot = sym::ROT * (tmp >> 2);
+
+      for (int j = 0; j < res[i].size(); j++) // undo rotation
+        res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
+      if (inv) { // undo inversion
+        for (int j = 0; j < res[i].size(); j++) {
+          if (res[i][j] < move::COUNT_CUBE)
+            res[i][j] = move::inv[res[i][j]];
+          else if (flip && res[i][j] != move::G)
+            res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
+        }
+        std::reverse(res[i].begin(), res[i].end());
+      }
+
+      int tilt = 0;
+      for (int j = 0; j < res[i].size(); j++) {
+        int tmp = res[i][j];
+        res[i][j] = tilt::trans_move[tilt][res[i][j]];
+        tilt = tilt::move_coord[tilt][tmp];
+      }
+
+      sols.pop();
+    }
+    std::reverse(res.begin(), res.end()); // return solutions in order of increasing length
+    std::reverse(ids.begin(), ids.end());
+    return ids;
+  }
+
+  void Engine::report_sol(searchres& sol) {
+    std::lock_guard<std::mutex> lock(sol_mtx);
+
+    if (done) // prevent any type of reporting after the solver has terminated (important for threading)
+      return;
+
+    sols.push(sol); // usually we only get here if we actually have a solution that will be added
+    if (sols.size() > n_sols)
+      sols.pop();
+    if (sols.size() == n_sols) {
+      lenlim = sols.top().first.size(); // only search for strictly shorter solutions
+
+      if (lenlim <= max_len) { // already found a solution that is short enough
+        done = true; // end searching
+        // Wake up timeout
+        std::lock_guard<std::mutex> lock(tout_mtx);
+        tout_cvar.notify_one();
+      }
+    }
   }
 
   void Engine::solve(const cubie::cube& c, std::vector<std::vector<int>>& res) {
@@ -312,6 +416,7 @@ namespace solve {
       move::mask tmp; // simply ignore, makes no sense anyways without proper `togo`
       if (dir & 1) { // inverse searches may start the phase 1 search with any of the tilt classes
         depths[dir] = 100;
+#ifndef SAFE // we cannot use inverse searches in safe mode due to axis flipping 
         for (int stilt = 0; stilt < 3; stilt++) {
           depths[dir] = std::min(
             depths[dir],
@@ -319,73 +424,83 @@ namespace solve {
           );
         }
         depths[dir]++; // to not bias the search towards inverse searches
+#endif
       } else
         depths[dir] = prun::get_phase1(dirs[dir].flip, dirs[dir].slice, dirs[dir].twist, dirs[dir].tilt, 100, tmp);
       splits[dir] = 0;
     }
 
-    job_mtx.unlock(); // start solving
-
-    { // timeout
-      std::unique_lock<std::mutex> lock(tout_mtx);
-      tout_cvar.wait_for(lock, std::chrono::milliseconds(tlim), [&]{ return done; });
-      if (!done)
-        done = true; // if we get here, this was a timeout
-    }
-    std::lock_guard<std::mutex> lock(sol_mtx); // make sure no thread is writing any more solutions
-
-    res.resize(sols.size());
-    for (int i = 0; i < res.size(); i++) {
-      const searchres& sol = sols.top();
-      res[i].resize(sol.first.size());
-
-      bool flip = sol.second & 1;
-      bool inv = (sol.second >> 1) & 1;
-      int rot = sym::ROT * (sol.second >> 2);
-
-      for (int j = 0; j < res[i].size(); j++) // undo rotation
-        res[i][j] = sol.first[j] < move::COUNT_CUBE ? sym::conj_move[sol.first[j]][rot] : sol.first[j];
-      if (inv) { // undo inversion
-        for (int j = 0; j < res[i].size(); j++) {
-          if (res[i][j] < move::COUNT_CUBE)
-            res[i][j] = move::inv[res[i][j]];
-          else if (flip && res[i][j] != move::G)
-            res[i][j] = move::COUNT_CUBE + !(res[i][j] - move::COUNT_CUBE);
-        }
-        std::reverse(res[i].begin(), res[i].end());
-      }
-
-      int tilt = 0;
-      for (int j = 0; j < res[i].size(); j++) {
-        int tmp = res[i][j];
-        res[i][j] = tilt::trans_move[tilt][res[i][j]];
-        tilt = tilt::move_coord[tilt][tmp];
-      }
-
-      sols.pop();
-    }
-    std::reverse(res.begin(), res.end()); // return solutions in order of increasing length
+    solve(res);
   }
 
-  void Engine::report_sol(searchres& sol) {
-    std::lock_guard<std::mutex> lock(sol_mtx);
+  std::vector<int> Engine::groupsolve(
+    const std::vector<cubie::cube>& cubes, 
+    const std::vector<int>& costs, const std::vector<int>& statesets,
+    std::vector<std::vector<int>>& res
+  ) {
+    prepare();
 
-    if (done) // prevent any type of reporting after the solver has terminated (important for threading)
-      return;
+    // Clear stuff from previous solves
+    jobs.clear();
+    auto cmp = [&](int i, int j) { 
+      return dists[i] + extras[i] > dists[j] + extras[j]; // sort descending 
+    };
+    jobpq = std::priority_queue<int, std::vector<int>, std::function<bool(int, int)>>(cmp); 
+    dists.clear();
 
-    sols.push(sol); // usually we only get here if we actually have a solution that will be added
-    if (sols.size() > n_sols)
-      sols.pop();
-    if (sols.size() == n_sols) {
-      lenlim = sols.top().first.size(); // only search for strictly shorter solutions
+    int mincost = 1000;
+    for (int cost : costs)
+      mincost = std::min(mincost, cost);
+    extras.clear();
 
-      if (lenlim <= max_len) { // already found a solution that is short enough
-        done = true; // end searching
-        // Wake up timeout
-        std::lock_guard<std::mutex> lock(tout_mtx);
-        tout_cvar.notify_one();
+    cubie::cube tmp1, tmp2;
+    cubie::cube invc;
+    move::mask tmp;
+
+    int i = 0;
+    for (const cubie::cube& c : cubes) {
+      cubie::inv(c, invc);
+      for (int dir = 0; dir < N_DIRS; dir++) {
+#ifdef SAFE
+        if (dir & 1)
+          continue;
+#endif
+        const cubie::cube& c1 = (dir & 1) ? invc : c;
+        int rot = sym::ROT * (dir / 2);
+        cubie::mul(sym::cubes[sym::inv[rot]], c1, tmp1);
+        cubie::mul(tmp1, sym::cubes[rot], tmp2);
+
+        int flip = coord::get_flip(tmp2);
+        int slice = coord::get_slice(tmp2);
+        int twist = coord::get_twist(tmp2);
+        int tilt = DIR_TILTS[dir];
+        jobs.push_back({
+          {
+            flip, slice, twist,
+            coord::get_uedges(tmp2), 
+            coord::get_dedges(tmp2),
+            coord::get_corners(tmp2),
+            tilt
+          },
+          statesets[i / N_DIRS],
+#ifdef SAFE
+          (i / 3) * 6 + dir // code cube index into `dir`
+#else
+          (i / 6) * 6 + dir
+#endif
+        });
+        dists.push_back(prun::get_phase1(flip, slice, twist, tilt, 100, tmp)); 
+        extras.push_back(costs[i / N_DIRS] - mincost);
+
+        jobpq.push(i);
+        i++;
       }
     }
+
+    group = true;
+    std::vector<int> ids = solve(res);
+    group = false;
+    return ids;
   }
 
   void Engine::finish() {

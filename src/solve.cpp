@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <bitset>
-#include <iostream> // TODO: remove
 #include <strings.h>
 #include <thread>
 
@@ -55,7 +54,6 @@ namespace solve {
     int& lenlim; // only find strictly shorter solutions
     Engine& solver; // report solutions to
     int extra; // additional solution cost, relevant for group solves
-    int startset;
 
     /* Keep track of reconstructed edges that remain valid in the current search path */
     int uedges[50];
@@ -81,10 +79,9 @@ namespace solve {
       const coordc& cube,
       int p1depth, move::mask d0moves,
       bool& done, int& lenlim, Engine& solver,
-      int extra = 0, int startset = 1
+      int extra = 0
     ) : 
-      dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(lenlim), solver(solver), 
-      extra(extra), startset(startset) 
+      dir(dir), cube(cube), p1depth(p1depth), d0moves(d0moves), done(done), lenlim(lenlim), solver(solver), extra(extra)
     {};
     void run(); // perform the search
 
@@ -113,7 +110,7 @@ namespace solve {
       prun::get_phase1(cube.flip, cube.slice, cube.twist, cube.tilt, p1depth, next);
       next &= move::p1mask & tilt::moves[cube.tilt] & d0moves; // select current search split
       edges_depth = 0;
-      phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, startset);
+      phase1(0, p1depth, cube.flip, cube.slice, cube.twist, cube.corners, cube.tilt, next, 1);
     }
   }
 
@@ -196,7 +193,7 @@ namespace solve {
     if (togo == 0) {
       if (slice != coord::N_SLICE2 * coord::SLICE1_SOLVED) // check if SLICE2 is also solved
         return false;
-      if (inv && !(stateset & startset)) // move in startset must be reachable when we want to invert the solution
+      if (inv && !(stateset & 1)) // neutral state must be reachable when we want to invert the solution
         return false;
 
       searchres sol = {std::vector<int>(depth + extra), (dir << 1) | (inv ? FLIP_TILTS[tilt] : 0)};
@@ -280,7 +277,7 @@ namespace solve {
         Search search(
           jobs[i].dir, jobs[i].cube, togo, masks[tilt::coord_cls[jobs[i].cube.tilt]][0], 
           done, lenlim, *this, 
-          extras[i], jobs[i].stateset
+          extras[i]
         );
         search.run();
       } else {
@@ -434,9 +431,7 @@ namespace solve {
   }
 
   std::vector<int> Engine::groupsolve(
-    const std::vector<cubie::cube>& cubes, 
-    const std::vector<int>& costs, const std::vector<int>& statesets,
-    std::vector<std::vector<int>>& res
+    const std::vector<cubie::cube>& cubes, const std::vector<int>& costs, std::vector<std::vector<int>>& res
   ) {
     prepare();
 
@@ -482,7 +477,6 @@ namespace solve {
             coord::get_corners(tmp2),
             tilt
           },
-          statesets[i / N_DIRS],
 #ifdef SAFE
           (i / 3) * 6 + dir // code cube index into `dir`
 #else

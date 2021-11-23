@@ -130,15 +130,6 @@ void test_move() {
       if (!move::in(m1, move::next[m]))
         std::cout << move::names[m1] << " ";
     }
-    /* TODO
-    if (move::qt_skip[m] != 0) {
-      std::cout << "| ";
-      for (int m1 = 0; m1 < move::COUNT; m1++) {
-        if (move::in(m1, move::qt_skip[m]))
-          std::cout << move::names[m1] << " ";
-      }
-    }
-     */
     std::cout << std::endl;
   }
 

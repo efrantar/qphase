@@ -3,8 +3,6 @@
 #include <numeric>
 #include "move.h"
 
-#include <iostream> // TODO: remove
-
 namespace grip {
 
   const cube INVALID = {-1, -1, -1, -1}; // we need to distinguish invalid temporary move cubes and truly invalid states
@@ -267,7 +265,6 @@ namespace grip {
       }
     }
 
-    // TODO: integrate this into the loop above
     std::fill(nextstate[0][0], nextstate[0][0] + state::COUNT * N_MOVES * regrip::COUNT, - 1);
     for (int state = 0; state < state::COUNT; state++) {
       set_state(c, state);
